@@ -2,6 +2,7 @@
 import itertools
 import numpy as np
 from eqtk import parse_rxns
+import math
 
 def make_nXn_dimer_reactions(m = 2):
     """
@@ -178,3 +179,20 @@ def make_Kij_names(n_input = 2, n_accesory = 2, m = None, rxn_ordered = True):
         names.extend([f'K{i[0]}{i[1]}' for i in itertools.combinations(range(n_input+1, n_input+n_accesory+1), 2)])
 
         return names
+
+def pointsInCircum(x, y, r=0.5, n=99):
+    return np.array([[x+np.cos(2*np.pi/n*i)*r,y+np.sin(2*np.pi/n*i)*r] for i in range(0,n+1)])
+    
+def interp_points(x_pos, y_pos, n = 3):
+    return np.stack((np.linspace(x_pos[0], x_pos[1], n), np.linspace(y_pos[0], y_pos[1], n)), axis =1)
+
+def get_poly_vertices(n, r = 1, dec = 3, start = math.pi/4):
+    """
+    Get x and y coordinates of n-polygon with radius r.
+    """
+    #This could be broadcast with numpy
+    #i.e. x = r * np.cos(2*np.pi * np.arange(1,n+1)/n)
+    #but I think it's easier to follow as list comprehension
+    x = np.array([round(r * math.cos(2*math.pi*i/n+start), dec) for i in range(n)]) 
+    y = np.array([round(r * math.sin(2*math.pi*i/n+start), dec) for i in range(n)])
+    return x,y
