@@ -331,7 +331,7 @@ class network_view_controller_1d(network_view_shared):
         self.param_Selector.param.watch(self.update_slider, ['value'])
         self.param_Selector.param.trigger('value')
         
-        self.output_scale_Selector.param.watch(self.out_scale_callback, ['value'])
+        self.output_scale_Selector.param.watch(self.out_scale_callback, ['value'], precedence=1)
         
         self.hide_dimers_Toggle.param.watch(self.toggle_dimers, ['value'])
     
@@ -359,8 +359,9 @@ class network_view_controller_1d(network_view_shared):
         #occasionally, the y_ranges don't update (especially if xaxis_scale chanegd to 'linear')
         #workaround for now is to just remake the figs
         self.plot_output_1d() #
-        self.param.trigger('xaxis_scale')
-        
+        self.out_view()
+        # self.param.trigger('xaxis_scale') 
+               # 
     def toggle_dimers(self, *events):
         for i in range(self.model.n_dimers):
             self.output_renderers_log[i].visible = events[0].old
@@ -458,7 +459,7 @@ class network_view_controller_2d(network_view_shared):
         self.param_Selector.param.trigger('value')
         
         self.dimer_Selector.param.watch(self.update_dimer, ['value'])
-        self.output_scale_Selector.param.watch(self.out_scale_callback, ['value'])
+        self.output_scale_Selector.param.watch(self.out_scale_callback, ['value'], precedence=1)
         
         self.hide_dimers_Toggle.param.watch(self.toggle_dimers, ['value'])
     
