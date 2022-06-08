@@ -520,9 +520,9 @@ class network_view_controller_2d(network_view_shared):
         return pn.Row(self.out_view, self.network_view, pn.Column(self.dimer_Selector, self.param_Selector, self.widget_slider), 
                       pn.Column(pn.widgets.StaticText(value ='normalize output:'), self.output_scale_Selector,self.random_K_Button))
 
-def dimer_network(n_monomers=3, n_input=1, 
-                  c0_bounds=(-3, 3), k_bounds=(-6,6),
-                  norm='max', n_titration=[10]):
+def create_dimer_network(n_monomers=3, n_input=1,
+    c0_bounds=(-3, 3), k_bounds=(-6,6),
+    norm='max', n_titration=[10]):
     """
     Create dimerization network model and view
     
