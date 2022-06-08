@@ -16,10 +16,10 @@ from utilities import *
 
 class network_model(param.Parameterized):
     
-    n_monomers = param.Integer(3, bounds=(2, 6), precedence = -1)
-    n_input = param.Integer(1, bounds=(1, 2), precedence = -1)
-    c0_bounds = param.NumericTuple((-3, 3), precedence = -1)
-    k_bounds = param.NumericTuple((-6, 6), precedence = -1)
+    n_monomers = param.Integer(3, bounds=(2, 6), precedence=-1)
+    n_input = param.Integer(1, bounds=(1, 2), precedence=-1)
+    c0_bounds = param.NumericTuple((-3, 3), precedence=-1)
+    k_bounds = param.NumericTuple((-6, 6), precedence=-1)
     norm = param.Selector(['max', 'minmax', 'none'], 'max')
     n_titration = param.List([10], item_type=int, precedence=-1)
     out_weights = param.DataFrame()
@@ -59,9 +59,6 @@ class network_model(param.Parameterized):
         self.C0 = make_C0_grid(m=self.n_monomers, M0_min=min_levels, M0_max=max_levels, num_conc=num_conc)
         
         self.acc_c0_log = np.log10(self.C0[0,self.n_input:self.n_monomers])
-        # self.param.add_parameter('C0', param.Array(C0, precedence=-1))
-        # for acc_mon in self.acc_monomer_list:
-        #     acc_mon.C0 = self.C0
     
     @param.depends('default_network_params', watch=True, on_init=True)
     def default_K(self):
@@ -109,7 +106,6 @@ class network_model(param.Parameterized):
         
    
     def solve_SS(self):
-        # self.C0[:,self.acc_index] = self.model_param_values[0:self.n_acc]
         self.S = eqtk.solve(c0=self.C0, N=self.N, K=self.K)
         
     
@@ -127,19 +123,19 @@ class network_model(param.Parameterized):
             # self.out_dot = self.out_dot/self.out_dot.max()  #not using this for now
 
 class accessory_monomer(param.Parameterized):
-    index = param.Integer(bounds = (0, None), precedence = -1)
-    value = param.Number(default=1, softbounds=(-3,3), step = 0.05)
+    index = param.Integer(bounds=(0, None), precedence=-1)
+    value = param.Number(default=1, softbounds=(-3,3), step=0.05)
     model = param.ClassSelector(network_model, allow_None=True)
     
     def __init__(self, **params):
         super().__init__(**params)
         self.param.name.precedence = -1
     
-    @param.depends('value', watch = True, on_init = False)
+    @param.depends('value', watch=True, on_init=False)
     def update_C0(self):
         self.model.C0[:,self.index] = np.power(10.0, self.value)
     
-    @param.depends('value', watch = True, on_init = False)
+    @param.depends('value', watch=True, on_init=False)
     def update_nodes(self):
         self.model.c0_log[self.index] = self.value
         self.model.c0_norm[self.index] = 5*(self.value-self.model.c0_bounds[0]+1.0)
@@ -147,19 +143,19 @@ class accessory_monomer(param.Parameterized):
             
 
 class Kij(param.Parameterized):
-    index = param.Integer(bounds = (0, None), precedence = -1)
-    value = param.Number(default = 1, softbounds=(-6,6), step = 0.05)
+    index = param.Integer(bounds=(0, None), precedence=-1)
+    value = param.Number(default=1, softbounds=(-6,6), step=0.05)
     model = param.ClassSelector(network_model, allow_None=True)
     
     def __init__(self, **params):
         super().__init__(**params)
         self.param.name.precedence = -1
     
-    @param.depends('value', watch = True, on_init = False)
+    @param.depends('value', watch=True, on_init=False)
     def update_K(self):
         self.model.K[self.index] = np.power(10.0, self.value)
     
-    @param.depends('value', watch = True, on_init = False)
+    @param.depends('value', watch=True, on_init=False)
     def update_edges(self):
         self.model.log_kij[self.index] = self.value
         self.model.kij_norm[self.index] = 0.25*(self.value-self.model.k_bounds[0]+1.0)
@@ -260,7 +256,7 @@ class network_view_shared(param.Parameterized):
         #since the renderer's data source are automatically updated 
         #(they are pointing to objects that are updated by methods in the accessory_monomer and Kij classes
         #However, I'm only seeing the panel update when the renderers get updated as in this function
-        #Note that I'm not using pn.io.push_notebook() since that doesn't work with google colab. 
+        #Note ,that I'm not using pn.io.push_notebook() since it is currently not supported on google colab. 
         self.network_renderers_edges.data_source.data['kij_norm'] = self.model.kij_norm
         self.network_renderers_edges.data_source.data['log_kij'] = self.model.log_kij
         self.network_renderers_nodes.data_source.data['c0_norm'] = self.model.c0_norm
@@ -279,20 +275,20 @@ class network_view_controller_1d(network_view_shared):
 
     def plot_output_1d(self):
         self.output_1d_log = bokeh.plotting.figure(x_axis_type="log", 
-                                                    plot_height = 300, 
-                                                    plot_width = 325, 
-                                                    x_axis_label = r'$$\rm M1_{tot}$$',
-                                                    y_axis_label = 'Equilibrium output',
-                                                    toolbar_location = None,
-                                                    tools = 'pan,box_zoom,reset')
+                                                    plot_height=300, 
+                                                    plot_width=325, 
+                                                    x_axis_label='log10 [M1] total',
+                                                    y_axis_label='Equilibrium output',
+                                                    toolbar_location=None,
+                                                    tools='pan,box_zoom,reset')
         #can't toggle axis scale with bokeh. Will create figure with both axis scales and toggle between them with callback
         self.output_1d_linear = bokeh.plotting.figure(x_axis_type="linear", 
-                                                       plot_height = 300, 
-                                                       plot_width = 325, 
-                                                       x_axis_label = r'$$\rm M1_{tot}$$',
-                                                       y_axis_label = 'Equilibrium output',
-                                                       toolbar_location = None,
-                                                       tools = 'pan,box_zoom,reset') 
+                                                       plot_height=300, 
+                                                       plot_width=325, 
+                                                       x_axis_label='log10 [M1] total',
+                                                       y_axis_label='Equilibrium output',
+                                                       toolbar_location=None,
+                                                       tools='pan,box_zoom,reset') 
         #Format figures
         self.format_fig(self.output_1d_log)
         self.format_fig(self.output_1d_linear)
@@ -331,25 +327,26 @@ class network_view_controller_1d(network_view_shared):
         fig.axis.axis_label_text_font_size = '16px'
     
     def attach_callbacks(self):
-        self.param_Selector.param.watch(self.update_slider, ['value'], onlychanged=True)
+        self.param_Selector.param.watch(self.update_slider, ['value'])
         self.param_Selector.param.trigger('value')
         
-        self.output_scale_Selector.param.watch(self.out_scale_callback, ['value'], precedence = 1)
+        self.output_scale_Selector.param.watch(self.out_scale_callback, ['value'])
         
         self.hide_dimers_Toggle.param.watch(self.toggle_dimers, ['value'])
     
         self.random_K_Button.param.watch(self.randomize_K, ['value'])
    
     ####Callbacks####    
-    def update_slider(self, *events):
+    def update_slider(self, *events): #This is an ugly solution but it works...
+        if hasattr(self, 'param_Slider_watcher'):
+            self.param_Slider.param.unwatch(self.param_Slider_watcher)
         self.param_Slider = pn.widgets.FloatSlider.from_param(events[0].new)
         self.param_Slider.width = 150
         self.param_Slider.name = 'log10 value'
-        self.param_Slider.param.watch(self.slider_callback, ['value'], onlychanged=True)
+        self.param_Slider_watcher = self.param_Slider.param.watch(self.slider_callback, ['value'])
         self.param.trigger('selector_trigger')
         
     def slider_callback(self, *events):
-        # print('slider value change')
         self.model.solve_SS()
         self.model.update_output()
         self.update_lines()
@@ -367,10 +364,10 @@ class network_view_controller_1d(network_view_shared):
     
     def randomize_K(self, *events):
         new_vales = self.model.rng.uniform(self.model.k_bounds[0], self.model.k_bounds[1], self.model.n_dimers)
-        with param.parameterized.batch_call_watchers(self):
-            for i, val in enumerate(new_vales):
-                self.Kij_list[i].value = val
-        # self.param.trigger('slider_trigger')
+        for i, val in enumerate(new_vales):
+            self.Kij_list[i].value = val
+        if self.param_Selector.value.name[0] == 'M':
+            self.slider_callback()
     
     ####Update plots####
     def update_lines(self):
@@ -392,8 +389,8 @@ class network_view_controller_1d(network_view_shared):
 
     def panel(self):
         return pn.Row(self.out_view, self.network_view, pn.Column(self.param_Selector, self.widget_slider), 
-                      pn.Column(pn.widgets.StaticText(value = 'x-axis scale:'), self.xaxis_Toggle, 
-                                pn.widgets.StaticText(value ='normalize output:'), self.output_scale_Selector,
+                      pn.Column(pn.widgets.StaticText(value='x-axis scale:'), self.xaxis_Toggle, 
+                                pn.widgets.StaticText(value='normalize output:'), self.output_scale_Selector,
                                 self.hide_dimers_Toggle, self.random_K_Button))
 
 class network_view_controller_2d(network_view_shared):
@@ -407,13 +404,13 @@ class network_view_controller_2d(network_view_shared):
                                                x_axis_label="log10 [M1] total", y_axis_label="log10 [M2] total",
                                                x_range=[0, self.model.n_titration[0]], 
                                                y_range=[0, self.model.n_titration[1]],
-                                               toolbar_location = None)
+                                               toolbar_location=None)
         
         #Format figures
         self.format_fig(self.output_2d)
         
         #Make color_mapper
-        self.color_mapper = bokeh.models.LinearColorMapper('Inferno256', low = 0.0, high = self.model.out_all[:,self.dimer_Selector.value].max())
+        self.color_mapper = bokeh.models.LinearColorMapper('Inferno256', low=0.0, high=self.model.out_all[:,self.dimer_Selector.value].max())
         #Add renderer
         self.output_renderer = self.make_heatmap_glyph(self.output_2d)
         
@@ -421,7 +418,7 @@ class network_view_controller_2d(network_view_shared):
         self.make_colorbar(self.output_2d)
         
         #Add tooltip
-        self.output_2d.add_tools(bokeh.models.HoverTool(tooltips = [("value", "@image")]))
+        self.output_2d.add_tools(bokeh.models.HoverTool(tooltips=[("value", "@image")]))
         
     def format_fig(self, fig):
         fig.grid.grid_line_color = None
@@ -444,8 +441,7 @@ class network_view_controller_2d(network_view_shared):
         return self.model.out_all[:,self.dimer_Selector.value].reshape(self.model.n_titration[0],-1).T
     
     def make_heatmap_glyph(self, fig):
-        # out_2d = self.model.out_all[:,self.dimer_Selector.value].reshape(self.model.n_titration[0],-1).T
-        return fig.image(image=[self.format_output_2d()], x=0, y=0, dw=self.model.n_titration[0], dh=self.model.n_titration[1], color_mapper = self.color_mapper)
+        return fig.image(image=[self.format_output_2d()], x=0, y=0, dw=self.model.n_titration[0], dh=self.model.n_titration[1], color_mapper=self.color_mapper)
     
     def make_colorbar(self, fig):
         self.color_bar = bokeh.models.ColorBar(color_mapper=self.color_mapper)
@@ -454,26 +450,27 @@ class network_view_controller_2d(network_view_shared):
         fig.add_layout(self.color_bar, 'right')
         
     def attach_callbacks(self):
-        self.param_Selector.param.watch(self.update_slider, ['value'], onlychanged=True)
+        self.param_Selector.param.watch(self.update_slider, ['value'])
         self.param_Selector.param.trigger('value')
         
         self.dimer_Selector.param.watch(self.update_dimer, ['value'])
-        self.output_scale_Selector.param.watch(self.out_scale_callback, ['value'], precedence = 1)
+        self.output_scale_Selector.param.watch(self.out_scale_callback, ['value'])
         
         self.hide_dimers_Toggle.param.watch(self.toggle_dimers, ['value'])
     
         self.random_K_Button.param.watch(self.randomize_K, ['value'])
    
     ####Callbacks####    
-    def update_slider(self, *events):
+    def update_slider(self, *events): #This is an ugly solution but it works...
+        if hasattr(self, 'param_Slider_watcher'):
+            self.param_Slider.param.unwatch(self.param_Slider_watcher)
         self.param_Slider = pn.widgets.FloatSlider.from_param(events[0].new)
         self.param_Slider.width = 150
         self.param_Slider.name = 'log10 value'
-        self.param_Slider.param.watch(self.slider_callback, ['value'], onlychanged=True)
+        self.param_Slider_watcher = self.param_Slider.param.watch(self.slider_callback, ['value'])
         self.param.trigger('selector_trigger')
         
     def slider_callback(self, *events):
-        # print('slider value change')
         self.model.solve_SS()
         self.model.update_output()
         self.update_heatmap()
@@ -498,10 +495,10 @@ class network_view_controller_2d(network_view_shared):
     
     def randomize_K(self, *events):
         new_vales = self.model.rng.uniform(self.model.k_bounds[0], self.model.k_bounds[1], self.model.n_dimers)
-        with param.parameterized.batch_call_watchers(self):
-            for i, val in enumerate(new_vales):
-                self.Kij_list[i].value = val
-        # self.param.trigger('slider_trigger')
+        for i, val in enumerate(new_vales):
+            self.Kij_list[i].value = val
+        if self.param_Selector.value.name[0] == 'M':
+            self.slider_callback()
     
     ####Update plots####
     def update_heatmap(self):
@@ -517,6 +514,6 @@ class network_view_controller_2d(network_view_shared):
         return pn.Row(self.param_Slider)
 
     def panel(self):
-        return pn.Row(self.out_view, self.network_view, pn.Column(self.param_Selector, self.widget_slider, self.dimer_Selector), 
+        return pn.Row(self.out_view, self.network_view, pn.Column(self.dimer_Selector, self.param_Selector, self.widget_slider), 
                       pn.Column(pn.widgets.StaticText(value ='normalize output:'), self.output_scale_Selector,self.random_K_Button))
 
