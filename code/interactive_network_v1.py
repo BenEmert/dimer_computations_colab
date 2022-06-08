@@ -325,6 +325,7 @@ class network_view_controller_1d(network_view_shared):
         fig.axis.axis_label_text_color = 'black'
         fig.axis.axis_label_text_font_style = 'normal'
         fig.axis.axis_label_text_font_size = '16px'
+        fig.y_range.update(start=0)
     
     def attach_callbacks(self):
         self.param_Selector.param.watch(self.update_slider, ['value'])
@@ -354,8 +355,11 @@ class network_view_controller_1d(network_view_shared):
         self.param.trigger('slider_trigger')
     
     def out_scale_callback(self, *events):
-        self.update_lines()
-        self.out_view()
+        #Unfortunately, when I try to simply update the renderers and the y_range on the figures 
+        #occasionally, the y_ranges don't update (especially if xaxis_scale chanegd to 'linear')
+        #workaround for now is to just remake the figs
+        self.plot_output_1d() #
+        self.param.trigger('xaxis_scale')
         
     def toggle_dimers(self, *events):
         for i in range(self.model.n_dimers):
@@ -478,15 +482,12 @@ class network_view_controller_2d(network_view_shared):
         self.param.trigger('slider_trigger')
     
     def update_dimer(self, *events):
-        self.color_mapper.high = self.model.out_all[:,self.dimer_Selector.value].max()
         self.update_heatmap()
         self.out_view()
         
     def out_scale_callback(self, *events):
-        self.color_mapper.high = self.model.out_all[:,self.dimer_Selector.value].max()
         self.update_heatmap()
         self.out_view()
-        # self.param.trigger('slider_trigger')
         
     def toggle_dimers(self, *events):
         for i in range(self.model.n_dimers):
@@ -502,6 +503,7 @@ class network_view_controller_2d(network_view_shared):
     
     ####Update plots####
     def update_heatmap(self):
+        self.color_mapper.high = self.model.out_all[:,self.dimer_Selector.value].max()
         self.output_renderer.data_source.data['image'] = [self.format_output_2d()]
             
     ####View methods for Panel####
