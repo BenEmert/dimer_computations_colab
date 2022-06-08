@@ -11,6 +11,7 @@ import bokeh.models
 import bokeh.palettes
 import colorcet as cc
 import panel as pn
+pn.extension()
 
 from utilities import *
 
@@ -359,8 +360,7 @@ class network_view_controller_1d(network_view_shared):
         #occasionally, the y_ranges don't update (especially if xaxis_scale chanegd to 'linear')
         #workaround for now is to just remake the figs
         self.plot_output_1d() #
-        self.out_view()
-        # self.param.trigger('xaxis_scale') 
+        self.param.trigger('xaxis_scale') 
                # 
     def toggle_dimers(self, *events):
         for i in range(self.model.n_dimers):
@@ -519,4 +519,45 @@ class network_view_controller_2d(network_view_shared):
     def panel(self):
         return pn.Row(self.out_view, self.network_view, pn.Column(self.dimer_Selector, self.param_Selector, self.widget_slider), 
                       pn.Column(pn.widgets.StaticText(value ='normalize output:'), self.output_scale_Selector,self.random_K_Button))
+
+def dimer_network(n_monomers=3, n_input=1, 
+                  c0_bounds=(-3, 3), k_bounds=(-6,6),
+                  norm='max', n_titration=[10]):
+    """
+    Create dimerization network model and view
+    
+    Parameters
+    ----------
+    n_monomers : int
+        Number of monomer species. Default is 3. Bounds (2,6)
+    n_input : int
+        Number of input monomer species. Default is 1. Choices (1,2)
+    c0_bounds : int tuple. 
+        Limits for the total monomer concentration on log10 scale. 
+        Default is (-3,3).
+    k_bounds : int tuple. 
+        Limits for the binding equilibrium constants (kij) on log10 scale. 
+        Default is (-6,6).
+    norm : str. 
+        Option for normalizing equilibrium dimer concentrations (output). 
+        Default is 'max'. Options are ['none', 'max', 'minmax']
+        'Max' divides each dimer by it's max concentration. 
+        'Minmax' subtracts min concentration then divides by max. 
+    n_titration : list of int. length n_input. 
+        Number of concentrations to titrate each input monomer
+        Each input monomer titrated in logspace.
+    """
+    with param.exceptions_summarized():
+        model = network_model(n_monomers=n_monomers, 
+                              n_input=n_input,
+                              c0_bounds=c0_bounds,
+                              k_bounds=k_bounds,
+                              norm=norm,
+                              n_titration=n_titration)
+        if n_input == 1:
+            network_view=network_view_controller_1d(model=model)
+        elif n_input == 2:
+            network_view=network_view_controller_2d(model=model)
+        
+        return network_view
 
