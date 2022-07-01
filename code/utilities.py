@@ -1,8 +1,17 @@
 
 import itertools
 import numpy as np
+import scipy.stats
 from eqtk import parse_rxns
 import math
+
+def sample_concentrations(n_dims, n_samples, lb, ub, centered=True, seed=42, do_power=True):
+    lhs_sampler =  scipy.stats.qmc.LatinHypercube(d=n_dims, centered=centered, seed=seed)
+    param_sets = lhs_sampler.random(n=n_samples)
+    param_sets = scipy.stats.qmc.scale(param_sets, lb, ub)
+    if do_power:
+        param_sets = np.power(10, param_sets)
+    return param_sets
 
 def make_nXn_dimer_reactions(m = 2):
     """
