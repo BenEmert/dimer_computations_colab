@@ -295,6 +295,9 @@ class TuneK:
                 c0_acc_best = opt.x
                 # rerun the best run to get more details
                 theta_best, mse_total_best, mse_list_best = self.inner_opt(c0_acc_best, K)
+
+                # convert c0_acc_best to a shaped array
+                c0_acc_best = c0_acc_best.reshape(self.n_targets,-1)
                 return mse_total_best, mse_list_best, c0_acc_best, theta_best
 
         elif self.acc_opt=='outer' and self.w_opt=='inner':
