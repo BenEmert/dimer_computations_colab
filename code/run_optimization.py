@@ -43,11 +43,11 @@ class TuneK:
                     n_accessory_samples = 75, # number of latin-hypercube samples from the space of initial accessory concentrations...time complexity scales linearly w.r.t. this parameter
                     input_lb = -3,
                     input_ub = 3,
+                    acc_lb = -3,
+                    acc_ub = 3,
                     centered = True,
                     param_lb = -6,
-                    param_ub = 6,
-                    acc_opt="outer",
-                    w_opt="inner"):
+                    param_ub = 6):
         """
         Run simulations for dimer networks of size m and input titration size t
         with k different parameter universes.
@@ -82,17 +82,16 @@ class TuneK:
         self.m = m
         self.n_input_samples = n_input_samples
         self.n_accessory_samples = n_accessory_samples
-        self.acc_opt = acc_opt
-        self.w_opt = w_opt
         self.input_lb = input_lb
         self.input_ub = input_ub
+        self.acc_lb = acc_lb
+        self.acc_ub = acc_ub
         self.centered = centered
 
         self.param_lb = param_lb
         self.param_ub = param_ub
 
         self.setup()
-        self.set_opts()
 
         self.set_targets()
 
@@ -145,27 +144,30 @@ class TuneK:
         if self.param_ub is None:
             self.param_ub = [6]*self.num_rxns + [3]*(self.m-1)
 
-        acc_lb = [self.input_lb]*(self.m-1)
-        acc_ub = [self.input_ub]*(self.m-1)
-        self.acc_list = sample_concentrations(self.m-1, self.n_accessory_samples, acc_lb, acc_ub, do_power=True) # 75 (number of draws) x 2 (number of accessories)
+        self.acc_lb = [self.acc_lb]*(self.m-1)
+        self.acc_ub = [self.acc_ub]*(self.m-1)
+        self.acc_list = sample_concentrations(self.m-1, self.n_accessory_samples, self.acc_lb, self.acc_ub, do_power=False) # 75 (number of draws) x 2 (number of accessories)
 
         self.param_lb = [self.param_lb]*self.num_rxns
         self.param_ub = [self.param_ub]*self.num_rxns
 
-    def optimize_binding(self, popsize=15, maxiter=10):
+
+    def optimize_binding(self, popsize=15, maxiter=10, acc_opt="outer", w_opt="inner"):
         # k_vec = sample_params(self.m, k=100, lb=self.input_lb, ub=self.input_ub, centered = True, seed = 42)
         # generate a single initial condition k0 as a proposed binding affinity matrix
         # k0 = sample_params(self.m, 1, self.param_lb, self.param_ub, centered=True, seed=42).squeeze()
-
         # randomly generate an initial condition
         # k0 = sample_concentrations(self.num_rxns, 100, self.param_lb, self.param_ub, do_power=False)[np.random.randint(100)].squeeze() # 75 (number of draws) x 2 (number of accessories)
 
+        self.acc_opt = acc_opt
+        self.w_opt = w_opt
+        self.set_opts()
+
         self.make_output_dir()
 
-        k_bounds = np.vstack((self.param_lb, self.param_ub)).T
-
         self.opt = differential_evolution(self.loss_k,
-                bounds = k_bounds,
+                disp = True,
+                bounds = np.vstack((self.param_lb, self.param_ub)).T,
                 maxiter = maxiter,
                 popsize = popsize)
 
@@ -178,14 +180,14 @@ class TuneK:
 
         return foo
 
-    def loss_k(self, K, final_run=False):
-        Kpow = np.power(10, K)
-        mse_best, mse_list_best, c0_acc_best, theta_best = self.outer_opt(Kpow)
-        print('MSE:', mse_best)
-        print('MSE per target:', mse_list_best)
-        print('Accessory concentrations:', c0_acc_best)
-        print('log(K):', K)
-        print('theta:', theta_best)
+    def loss_k(self, K, final_run=False, verbose=False):
+        mse_best, mse_list_best, c0_acc_best, theta_best = self.outer_opt(K)
+        if verbose or final_run:
+            print('MSE:', mse_best)
+            print('MSE per target:', mse_list_best)
+            print('Accessory concentrations:', c0_acc_best)
+            print('log(K):', K)
+            print('theta:', theta_best)
 
         if final_run:
             fig, axs = plt.subplots(nrows=1, ncols=self.n_targets, figsize = [self.n_targets*10,10])
@@ -201,7 +203,7 @@ class TuneK:
                 else:
                     theta = theta_best
 
-                f_hat = self.predict(Kpow, c0_acc, theta)
+                f_hat = self.predict(K, c0_acc, theta)
 
                 axs[j].plot(f_hat, label='Fit')
                 axs[j].plot(self.f_targets[j], label='Target', color='black')
@@ -227,50 +229,62 @@ class TuneK:
     def set_opts(self):
         if self.acc_opt=='inner' and self.w_opt=='inner':
             # SUM_j min_(a_j, theta_j) |F_j - G(k; a_j, theta_j)|
-            pass
+            def outer_opt(K, maxiter=3, popsize=15):
+                theta_star = np.zeros((self.n_targets, len(K)))
+                c0_acc_star = np.zeros((self.n_targets, self.m-1))
+                mse_total = 0
+                mse_list = [0 for j in range(self.n_targets)]
+                for j in range(self.n_targets):
+                    opt = differential_evolution(lambda x: self.inner_opt(x, K, j)[1],
+                            bounds = np.vstack((self.acc_lb, self.acc_ub)).T,
+                            maxiter = maxiter,
+                            popsize = popsize)
+                    c0_acc_star_j = opt.x
+                    c0_acc_star[j] = c0_acc_star_j
+                    # rerun the best run to get more details
+                    theta_star_j, mse_j = self.inner_opt(c0_acc_star_j, K, j)
+                    theta_star[j] = theta_star_j
+                    mse_list[j] = mse_j
+                    mse_total += mse_j
+                return mse_total, mse_list, c0_acc_star, theta_star
+
+            def inner_opt(c0_acc, K, j_target):
+                '''Compute the optimal weights for each target function given fixed K and accessorry concentrations'''
+                dimers = self.g1(c0_acc, K) # 40 x 9
+                theta_star_j, errs_j = scipy.optimize.nnls(dimers, self.f_targets[j_target]) # returns L2 errors (sqrt of sum of squares)
+                mse_j = errs_j**2 / self.n_input_samples
+                return theta_star_j, mse_j
+
+
         elif self.acc_opt=='inner' and self.w_opt=='outer':
             # min_theta SUM_j min_(a_j) |F_j - G(k; a_j, theta)|
             pass
         elif self.acc_opt=='outer' and self.w_opt=='inner':
             # min_a SUM_j min_(theta_j) |F_j - G(k; a, theta_j)|
             # perhaps simplest computationally?
-            def inner_opt(K, c0_acc):
+            def inner_opt(c0_acc, K):
                 '''Compute the optimal weights for each target function given fixed K and accessorry concentrations'''
-                t_g1 = time.time()
                 dimers = self.g1(c0_acc, K) # 40 x 9
-                # print('G1 took {} secs'.format(time.time() - t_g1))
-
                 theta_star = np.zeros((self.n_targets, dimers.shape[1]))
                 mse_total = 0
                 mse_list = [0 for j in range(self.n_targets)]
                 for j in range(self.n_targets):
                     opt_j, errs_j = scipy.optimize.nnls(dimers, self.f_targets[j]) # returns L2 errors (sqrt of sum of squares)
                     theta_star[j] = opt_j
-
                     mse_j = errs_j**2 / self.n_input_samples
                     mse_list[j] = mse_j
                     mse_total += mse_j # errs_j is l2 norm, so square it, then divide by N to get MSE
                 return theta_star, mse_total, mse_list
 
-            def outer_opt(K):
-                '''Optimize (brute force) accessory concentrations for the fixed K.'''
-                t_outer = time.time()
-                mse_total_best = np.Inf
-                for j in range(self.n_accessory_samples):
-                    c0_acc = self.acc_list[j]
-                    t_inner = time.time()
-                    theta_star_j, mse_total_j, mse_list_j = self.inner_opt(K, c0_acc)
-                    # print('Inner opt took {} secs'.format(time.time() - t_inner))
-                    if mse_total_j < mse_total_best:
-                        mse_total_best = mse_total_j
-                        c0_acc_best = c0_acc.copy()
-                        theta_best = theta_star_j
-                        mse_list_best = mse_list_j
-                # print('Outer opt took {} secs'.format(time.time() - t_outer))
-                # print('Best MSE:', mse_best)
-                # print('Best accessory concentrations:', c0_acc_best)
-                # print('Best non-negative linear weights:', theta_best)
-
+            def outer_opt(K, maxiter=3, popsize=15):
+                '''Optimize accessory concentrations for the fixed K.'''
+                opt = differential_evolution(lambda x: self.inner_opt(x, K)[1],
+                        bounds = np.vstack((self.acc_lb, self.acc_ub)).T,
+                        maxiter = maxiter,
+                        popsize = popsize)
+                c0_acc_best = opt.x
+                # rerun the best run to get more details
+                theta_best, mse_total_best, mse_list_best = self.inner_opt(c0_acc_best, K)
                 return mse_total_best, mse_list_best, c0_acc_best, theta_best
 
         elif self.acc_opt=='outer' and self.w_opt=='outer':
@@ -285,10 +299,15 @@ class TuneK:
 
         return
 
-    def g1(self, c0_acc, K):
+    def g1(self, c0_acc, K, apply_power_K=True, apply_power_c0=True):
         # for 1d -> 1d predictions, we have each row of C0 being the same EXCEPT in its first column,
         # where we modulate the input monomor concentration over a pre-defined range.
         # Note: evaluation of g1 scales linearly with number of rows in C0...eqtk must treat each row of C0 independently.
+        if apply_power_K:
+            K = np.power(10, K)
+        if apply_power_c0:
+            c0_acc = np.power(10, c0_acc)
+
         C0 = self.C0.copy()
         C0[:,self.acc_monomer_ind] = c0_acc # each row should get c0_acc
         sols = eqtk.solve(c0=C0, N=self.N, K=K)
@@ -307,7 +326,12 @@ class TuneK:
         f_hat = self.g2(dimers, theta)
         return f_hat
 
-
 ######
 foo = TuneK(m=3, n_input_samples=40, n_accessory_samples=75)
-foo.optimize_binding(popsize=15, maxiter=10)
+
+
+# optimize over K's, allowing only 1 global choice of accessory monomoer concentrations, and target-specific choice of non-negative dimer weights
+foo.optimize_binding(popsize=15, maxiter=3, acc_opt="outer", w_opt="inner")
+
+# optimize over K's, allowing only target-specific choice of accessory monomoer concentrations, and target-specific choice of non-negative dimer weights
+foo.optimize_binding(popsize=15, maxiter=3, acc_opt="inner", w_opt="inner")
