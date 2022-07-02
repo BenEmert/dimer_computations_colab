@@ -101,7 +101,7 @@ class TuneK:
 
     def make_output_dir(self):
         t = time.localtime()
-        timestamp = time.strftime('%b-%d-%Y_%H%M', t)
+        timestamp = time.strftime('%m%d%Y%H%M%S', t)
         base_nm = self.make_experiment_name()
         self.output_dir = os.path.join(self.base_dir, base_nm + '_' + timestamp)
         os.makedirs(self.output_dir)
@@ -144,9 +144,9 @@ class TuneK:
         if self.param_ub is None:
             self.param_ub = [6]*self.num_rxns + [3]*(self.m-1)
 
-        self.acc_lb = [self.acc_lb]*(self.m-1)
-        self.acc_ub = [self.acc_ub]*(self.m-1)
-        self.acc_list = sample_concentrations(self.m-1, self.n_accessory_samples, self.acc_lb, self.acc_ub, do_power=False) # 75 (number of draws) x 2 (number of accessories)
+        self.acc_lb_list = [self.acc_lb]*(self.m-1)
+        self.acc_ub_list = [self.acc_ub]*(self.m-1)
+        self.acc_list = sample_concentrations(self.m-1, self.n_accessory_samples, self.acc_lb_list, self.acc_ub_list, do_power=False) # 75 (number of draws) x 2 (number of accessories)
 
         self.param_lb = [self.param_lb]*self.num_rxns
         self.param_ub = [self.param_ub]*self.num_rxns
@@ -236,7 +236,7 @@ class TuneK:
                 mse_list = [0 for j in range(self.n_targets)]
                 for j in range(self.n_targets):
                     opt = differential_evolution(lambda x: self.inner_opt(x, K, j)[1],
-                            bounds = np.vstack((self.acc_lb, self.acc_ub)).T,
+                            bounds = np.vstack((self.acc_lb_list, self.acc_ub_list)).T,
                             maxiter = maxiter,
                             popsize = popsize)
                     c0_acc_star_j = opt.x
@@ -258,7 +258,45 @@ class TuneK:
 
         elif self.acc_opt=='inner' and self.w_opt=='outer':
             # min_theta SUM_j min_(a_j) |F_j - G(k; a_j, theta)|
-            pass
+            ## or, equivalently ##
+            # min_A SUM_j |F_j - G(k; A_j, theta(A))|
+            def inner_opt(c0_acc_list, K):
+                '''Compute the optimal weights for across all target functions given fixed K and per-target accessorry concentrations'''
+                dimers_all = []
+                for j in range(self.n_targets):
+                    i_low = j*(self.m-1)
+                    i_high = i_low + (self.m-1)
+                    dimers_j = self.g1(c0_acc_list[i_low:i_high], K) # 40 x 9
+                    dimers_all += [dimers_j]
+
+                targets_all = self.f_targets.reshape(-1) #(40*n,)
+                dimers_all = np.vstack(dimers_all)
+                # theta_star, errs_all = scipy.optimize.nnls(dimers_all, targets_all) # returns L2 errors (sqrt of sum of squares)
+                # instead of NNLS, use lsq_linear because it returns pointwise residuals automatically, rather than just overall MSE.
+                foo = scipy.optimize.lsq_linear(dimers_all, targets_all, bounds=(0, np.Inf), method='bvls')
+                theta_star = foo.x
+                mse_total = np.sum(foo.fun**2) / self.n_input_samples
+
+                # compute listed MSEs
+                mse_list = [0 for j in range(self.n_targets)]
+                for j in range(self.n_targets):
+                    i_low = j*(self.m-1)
+                    i_high = i_low + (self.m-1)
+                    mse_list[j] = np.sum(foo.fun[i_low:i_high]**2) / self.n_input_samples
+
+                return theta_star, mse_total, mse_list
+
+            def outer_opt(K, maxiter=3, popsize=15):
+                '''Optimize accessory concentrations for the fixed K.'''
+                opt = differential_evolution(lambda x: self.inner_opt(x, K)[1],
+                        bounds = np.vstack(([self.acc_lb]*(self.m-1)*self.n_targets, [self.acc_ub]*(self.m-1)*self.n_targets)).T,
+                        maxiter = maxiter,
+                        popsize = popsize)
+                c0_acc_best = opt.x
+                # rerun the best run to get more details
+                theta_best, mse_total_best, mse_list_best = self.inner_opt(c0_acc_best, K)
+                return mse_total_best, mse_list_best, c0_acc_best, theta_best
+
         elif self.acc_opt=='outer' and self.w_opt=='inner':
             # min_a SUM_j min_(theta_j) |F_j - G(k; a, theta_j)|
             # perhaps simplest computationally?
@@ -279,7 +317,7 @@ class TuneK:
             def outer_opt(K, maxiter=3, popsize=15):
                 '''Optimize accessory concentrations for the fixed K.'''
                 opt = differential_evolution(lambda x: self.inner_opt(x, K)[1],
-                        bounds = np.vstack((self.acc_lb, self.acc_ub)).T,
+                        bounds = np.vstack((self.acc_lb_list, self.acc_ub_list)).T,
                         maxiter = maxiter,
                         popsize = popsize)
                 c0_acc_best = opt.x
@@ -289,9 +327,9 @@ class TuneK:
 
         elif self.acc_opt=='outer' and self.w_opt=='outer':
             # min_(a, theta) SUM_j  |F_j - G(k; a, theta)|
-            pass
+            raise('Cannot do an outer-optimization for both accessories and weights. Quitting.')
         else:
-            raise
+            raise('Inner/Outer optimizations not correctly specified.')
 
         # allocate
         self.inner_opt = inner_opt
@@ -327,7 +365,10 @@ class TuneK:
         return f_hat
 
 ######
-foo = TuneK(m=3, n_input_samples=40, n_accessory_samples=75)
+foo = TuneK(m=3, n_input_samples=40)
+
+# optimize over K's, allowing target-specific choice of accessory monomoer concentrations, and only 1 global choice of non-negative dimer weights
+foo.optimize_binding(popsize=3, maxiter=3, acc_opt="inner", w_opt="outer")
 
 
 # optimize over K's, allowing only 1 global choice of accessory monomoer concentrations, and target-specific choice of non-negative dimer weights
