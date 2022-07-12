@@ -1,10 +1,11 @@
 import os, sys
 
+import seaborn as sns
 import matplotlib
 import matplotlib.pyplot as plt
 
 import pickle
-
+import functools
 import numpy as np
 import pandas as pd
 import scipy.stats
@@ -28,16 +29,22 @@ import eqtk
 # pwd = os.path.abspath('..')
 # sys.path.append(os.path.join(pwd, 'code/'))
 from utilities import *
+from makefuncs import set_target_library
 
 plt.rcParams.update({'font.size': 22, 'legend.fontsize': 12,
                 'legend.facecolor': 'white', 'legend.framealpha': 0.8,
                 'legend.loc': 'upper left', 'lines.linewidth': 4.0})
 
-
+default_colors = np.array(plt.rcParams['axes.prop_cycle'].by_key()['color'])
 
 class TuneK:
     def __init__(self,
                     base_dir = '../optimization_results',
+                    target_lib_name = 'SinCos',
+                    target_lib_file = None,
+                    acc_opt = 'inner',
+                    w_opt = 'inner',
+                    opt_settings_outer = {}, # use default settings for differential evolution
                     m = 3,
                     n_input_samples = 40, #discretization of first monomer...time complexity scales linearly w.r.t. this parameter
                     n_accessory_samples = 75, # number of latin-hypercube samples from the space of initial accessory concentrations...time complexity scales linearly w.r.t. this parameter
@@ -47,7 +54,8 @@ class TuneK:
                     acc_ub = 3,
                     centered = True,
                     param_lb = -6,
-                    param_ub = 6):
+                    param_ub = 6,
+                    **kwargs):
         """
         Run simulations for dimer networks of size m and input titration size t
         with k different parameter universes.
@@ -77,6 +85,8 @@ class TuneK:
             Indicates whether to center the draws from the latin-hypercube sampler
         base_dir : string. Default 'results'
             relative path for saving figure.
+        target_lib_name : string. Default 'SinCos'
+            Name of specially designed library to which we will fit.
         """
         self.base_dir = base_dir
         self.m = m
@@ -90,16 +100,25 @@ class TuneK:
 
         self.param_lb = param_lb
         self.param_ub = param_ub
+        self.opt_settings_outer = opt_settings_outer
 
         self.setup()
 
-        self.set_targets()
+        self.acc_opt = acc_opt
+        self.w_opt = w_opt
+        self.set_opts()
+
+        self.make_output_dir()
+
+        self.f_targets = set_target_library(n_input_samples=n_input_samples, target_lib_name=target_lib_name, target_lib_file=target_lib_file)
+        self.n_targets = self.f_targets.shape[0]
 
     def mse(self, f_true, f_pred):
         '''Mean Squared Error'''
         return np.mean( (f_true - f_pred)**2 )
 
     def make_output_dir(self):
+        # bp()
         t = time.localtime()
         timestamp = time.strftime('%m%d%Y%H%M%S', t)
         base_nm = self.make_experiment_name()
@@ -114,15 +133,6 @@ class TuneK:
                 'wOpt': self.w_opt}
         mystr = '_'.join([key + '-' + str(foo[key]) for key in foo])
         return mystr
-
-    def set_targets(self):
-        '''define a library of functions to fit'''
-        x = np.linspace(0, 2*np.pi, self.n_input_samples)
-        target_function_sin = 0.5*(np.sin(x)+1)
-        target_function_cos = 0.5*(np.cos(x)+1)
-
-        self.f_targets = np.vstack((target_function_sin, target_function_cos))
-        self.n_targets = self.f_targets.shape[0]
 
     def setup(self):
         self.N = make_nXn_stoich_matrix(self.m)
@@ -153,24 +163,12 @@ class TuneK:
 
 
     def optimize_binding(self, popsize=15, maxiter=10, acc_opt="outer", w_opt="inner"):
-        # k_vec = sample_params(self.m, k=100, lb=self.input_lb, ub=self.input_ub, centered = True, seed = 42)
-        # generate a single initial condition k0 as a proposed binding affinity matrix
-        # k0 = sample_params(self.m, 1, self.param_lb, self.param_ub, centered=True, seed=42).squeeze()
-        # randomly generate an initial condition
-        # k0 = sample_concentrations(self.num_rxns, 100, self.param_lb, self.param_ub, do_power=False)[np.random.randint(100)].squeeze() # 75 (number of draws) x 2 (number of accessories)
-
-        self.acc_opt = acc_opt
-        self.w_opt = w_opt
-        self.set_opts()
-
-        self.make_output_dir()
-
         self.opt = differential_evolution(self.loss_k,
                 disp = True,
                 bounds = np.vstack((self.param_lb, self.param_ub)).T,
                 maxiter = maxiter,
-                popsize = popsize)
-
+                popsize = popsize,
+                workers = 1)
         self.k_opt = self.opt.x
         self.k_opt_loss = self.opt.fun
 
@@ -190,9 +188,21 @@ class TuneK:
             print('theta:', theta_best)
 
         if final_run:
-            fig, axs = plt.subplots(nrows=1, ncols=self.n_targets, figsize = [self.n_targets*10,10])
-            plt.subplots_adjust(left=None, bottom=None, right=None, top=None, wspace=0.2, hspace=0.2)
-            for j in range(self.n_targets):
+            N_plot_dimers = min(10, len(K))
+            if N_plot_dimers == len(K):
+                dimer_inds = range(N_plot_dimers)
+            else:
+                dimer_inds = np.random.choice(np.arange(len(K)), size=N_plot_dimers, replace=False)
+
+            N_plot_targets = min(10, self.n_targets)
+            fig, axs = plt.subplots(nrows=3, ncols=N_plot_targets, figsize = [N_plot_targets*10,20])
+            plt.subplots_adjust(left=None, bottom=None, right=None, top=None, wspace=0.4, hspace=0.4)
+            if N_plot_targets == self.n_targets:
+                target_inds = range(N_plot_targets)
+            else:
+                target_inds = np.random.choice(np.arange(self.n_targets), size=N_plot_targets, replace=False)
+            for cc in range(N_plot_targets):
+                j = target_inds[cc]
                 if self.acc_opt=='inner':
                     c0_acc = c0_acc_best[j]
                 else:
@@ -204,14 +214,61 @@ class TuneK:
                     theta = theta_best
 
                 f_hat = self.predict(K, c0_acc, theta)
-
-                axs[j].plot(f_hat, label='Fit')
-                axs[j].plot(self.f_targets[j], label='Target', color='black')
-                axs[j].set_title('Fitting target-{}: MSE {}'.format(j, round(self.mse(f_hat, self.f_targets[j]), 3)))
+                axs[0,cc].plot(f_hat, label='Fit')
+                axs[0,cc].plot(self.f_targets[j], label='Target', color='black')
+                axs[0,cc].set_title('Fitting target-{}: MSE {}'.format(j, round(self.mse(f_hat, self.f_targets[j]), 3)))
                 if j==0:
-                    axs[j].legend()
+                    axs[0,cc].legend()
+
+                # compute dimers
+                dimer_names = np.array(make_Kij_names(n_input=1, n_accesory=self.m-1))[dimer_inds]
+                output_dimers = self.g1(c0_acc, K)[dimer_inds]
+                max_od = np.max(output_dimers, axis=0)
+
+                axs[1,cc].plot(output_dimers/max_od, label=dimer_names)
+                axs[1,cc].set_title('Output Dimers (Max-Normalized)')
+                axs[1,cc].legend()
+
+                y = theta[dimer_inds]*max_od
+                x = np.flipud(np.argsort(y))
+                y_sorted = y[x]
+                xseq = np.arange(len(x))
+                axs[2,cc].bar(xseq, y_sorted, color=default_colors[x])
+                axs[2,cc].set_xticks(xseq)
+                axs[2,cc].set_xticklabels(dimer_names[x])
+                axs[2,cc].set_title('Normalized Dimer Weights')
 
             fig.savefig(os.path.join(self.output_dir, 'optimization_results.pdf'), format='pdf')
+
+            # plot output dimers
+            if self.acc_opt=='outer':
+                fig, axs = plt.subplots(nrows=1, ncols=1, figsize = [10,10])
+                output_dimers = self.g1(c0_acc, K)
+                axs.plot(output_dimers)
+                axs.set_title('Output Dimers')
+                axs.set_yscale('log')
+                fig.savefig(os.path.join(self.output_dir, 'output_dimers.pdf'), format='pdf')
+
+            # plot accessory values
+            fig, axs = plt.subplots(nrows=1, ncols=1, figsize = [14,8])
+            plt.subplots_adjust(left=None, bottom=None, right=None, top=None, wspace=0.6, hspace=0.6)
+            sns.heatmap(ax=axs, data=np.array(c0_acc_best).reshape(-1, self.m-1), cmap="viridis", vmin=self.acc_lb, vmax=self.acc_ub)
+            axs.set_xticklabels(np.arange(2,self.m+1))
+            axs.set_ylabel('Target Function Index')
+            axs.set_xlabel('Accessory Monomer Index')
+            axs.set_title('Optimized Accessory Monomer Concentrations (log10)')
+            fig.savefig(os.path.join(self.output_dir, 'accessory_concentrations.pdf'), format='pdf')
+
+            ## plot optimal K
+            mask = np.tril(np.ones(self.m),-1) # creating mask
+            Kmatrix = make_K_matrix(K, self.m)
+            # plotting a triangle correlation heatmap
+            fig, axs = plt.subplots(nrows=1, ncols=1, figsize = [10,10])
+            sns.heatmap(ax=axs, data=Kmatrix, cmap="viridis", mask=mask, vmin=self.param_lb[0], vmax=self.param_ub[0])
+            axs.set_xticklabels(np.arange(1,self.m+1))
+            axs.set_yticklabels(np.arange(1,self.m+1))
+            axs.set_title('Optimized Binding Affinity Matrix (log10)')
+            fig.savefig(os.path.join(self.output_dir, 'logK.pdf'), format='pdf')
 
             # save results
             out = {'MSE': mse_best,
@@ -219,7 +276,7 @@ class TuneK:
                     'a': c0_acc_best,
                     'theta': theta_best,
                     'logK': K,
-                    'K': np.power(10, K)}
+                    'K': np.float_power(10, K)}
 
             with open(os.path.join(self.output_dir, 'info.pkl'), 'wb') as f:
                 pickle.dump(out, f)
@@ -237,8 +294,10 @@ class TuneK:
                 for j in range(self.n_targets):
                     opt = differential_evolution(lambda x: self.inner_opt(x, K, j)[1],
                             bounds = np.vstack((self.acc_lb_list, self.acc_ub_list)).T,
-                            maxiter = maxiter,
-                            popsize = popsize)
+                            **self.opt_settings_outer)
+                            # maxiter = maxiter,
+                            # popsize = popsize,
+                            # workers = 1)
                     c0_acc_star_j = opt.x
                     c0_acc_star[j] = c0_acc_star_j
                     # rerun the best run to get more details
@@ -290,8 +349,10 @@ class TuneK:
                 '''Optimize accessory concentrations for the fixed K.'''
                 opt = differential_evolution(lambda x: self.inner_opt(x, K)[1],
                         bounds = np.vstack(([self.acc_lb]*(self.m-1)*self.n_targets, [self.acc_ub]*(self.m-1)*self.n_targets)).T,
-                        maxiter = maxiter,
-                        popsize = popsize)
+                        **self.opt_settings_outer)
+                        # maxiter = maxiter,
+                        # popsize = popsize,
+                        # workers = 1)
                 c0_acc_best = opt.x
                 # rerun the best run to get more details
                 theta_best, mse_total_best, mse_list_best = self.inner_opt(c0_acc_best, K)
@@ -321,8 +382,10 @@ class TuneK:
                 '''Optimize accessory concentrations for the fixed K.'''
                 opt = differential_evolution(lambda x: self.inner_opt(x, K)[1],
                         bounds = np.vstack((self.acc_lb_list, self.acc_ub_list)).T,
-                        maxiter = maxiter,
-                        popsize = popsize)
+                        **self.opt_settings_outer)
+                        # maxiter = maxiter,
+                        # popsize = popsize,
+                        # workers = 1)
                 c0_acc_best = opt.x
                 # rerun the best run to get more details
                 theta_best, mse_total_best, mse_list_best = self.inner_opt(c0_acc_best, K)
@@ -345,9 +408,9 @@ class TuneK:
         # where we modulate the input monomor concentration over a pre-defined range.
         # Note: evaluation of g1 scales linearly with number of rows in C0...eqtk must treat each row of C0 independently.
         if apply_power_K:
-            K = np.power(10, K)
+            K = np.float_power(10, K)
         if apply_power_c0:
-            c0_acc = np.power(10, c0_acc)
+            c0_acc = np.float_power(10, c0_acc)
 
         C0 = self.C0.copy()
         C0[:,self.acc_monomer_ind] = c0_acc # each row should get c0_acc
@@ -366,16 +429,3 @@ class TuneK:
 
         f_hat = self.g2(dimers, theta)
         return f_hat
-
-######
-foo = TuneK(m=3, n_input_samples=40)
-
-# optimize over K's, allowing target-specific choice of accessory monomoer concentrations, and only 1 global choice of non-negative dimer weights
-foo.optimize_binding(popsize=3, maxiter=3, acc_opt="inner", w_opt="outer")
-
-
-# optimize over K's, allowing only 1 global choice of accessory monomoer concentrations, and target-specific choice of non-negative dimer weights
-foo.optimize_binding(popsize=15, maxiter=3, acc_opt="outer", w_opt="inner")
-
-# optimize over K's, allowing only target-specific choice of accessory monomoer concentrations, and target-specific choice of non-negative dimer weights
-foo.optimize_binding(popsize=15, maxiter=3, acc_opt="inner", w_opt="inner")
