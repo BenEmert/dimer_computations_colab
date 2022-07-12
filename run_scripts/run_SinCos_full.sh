@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-base_dir='results_SinCos_full'
+base_dir='../results/SinCos_full'
 TF='../data/hc_3M_metaClusterBasis_thresh3.npy'
-m=3 # Total number of monomers
+monomers=3 # Total number of monomers
 N=40 # Number of values to titrate the input monomer species. Values spaced evenly on a log10 scale
 TL='SinCos' # Which Target Library to fit to
 # TL='MetaClusters' # Which Target Library to fit to
@@ -26,7 +26,7 @@ PO_O=1 # Boolean: whether to Polish the optimization using scipy.optimize.minimi
 
 # one accessory concentration shared across all targets
 # different output weights for each target
-python ../code/run_script.py \
+python opt_script.py \
     --acc_opt 'outer' \
     --w_opt 'inner' \
     --target_lib_name $TL \
@@ -40,13 +40,13 @@ python ../code/run_script.py \
     --polish_O $PO_O \
     --workers_O $W_O \
     --base_dir $base_dir \
-    --m $m \
+    --monomers $monomers \
     --n_input_samples $N \
 \
 
 # different accessory concentrations for each target
 # one output weighting shared across all targets
-python ../code/run_script.py \
+python opt_script.py \
     --acc_opt 'inner' \
     --w_opt 'outer' \
     --target_lib_name $TL \
@@ -60,13 +60,13 @@ python ../code/run_script.py \
     --polish_O $PO_O \
     --workers_O $W_O \
     --base_dir $base_dir \
-    --m $m \
+    --monomers $monomers \
     --n_input_samples $N \
 \
 
 # different accessory concentrations for each target
 # different output weights for each target
-python ../code/run_script.py \
+python opt_script.py \
     --acc_opt 'inner' \
     --w_opt 'inner' \
     --target_lib_name $TL \
@@ -80,6 +80,6 @@ python ../code/run_script.py \
     --polish_O $PO_O \
     --workers_O $W_O \
     --base_dir $base_dir \
-    --m $m \
+    --monomers $monomers \
     --n_input_samples $N \
 \

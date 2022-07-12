@@ -44,13 +44,12 @@ opt_setts_K = make_opt_settings(FLAGS_diffev.__dict__)
 def my_loss(x):
     return FOO.loss_k(x)
 
-def do_opt():
+def do_opt(opt_setts):
     print('\n\n#### Starting optimization... ####')
-
     opt = differential_evolution(my_loss,
             disp = True,
             bounds = np.vstack((FOO.param_lb, FOO.param_ub)).T,
-            **opt_setts_K)
+            **opt_setts)
     k_opt = opt.x
     k_opt_loss = opt.fun
 
@@ -62,4 +61,4 @@ def do_opt():
 ######
 if __name__ == '__main__':
 
-    do_opt()
+    do_opt(opt_setts_K)
