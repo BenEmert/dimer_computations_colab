@@ -2,12 +2,15 @@ import os, sys
 
 import numpy as np
 
-from utilities import make_opt_settings
+sys.path.append('../code')
+
+from utilities import make_opt_settings, sec2friendly
 from makefuncs import set_target_library
 from scipy.optimize import minimize, brute, differential_evolution
 from tuning import TuneK
 from pdb import set_trace as bp
 import argparse
+from time import time
 
 parser1 = argparse.ArgumentParser()
 ## Settings for TuneK
@@ -60,5 +63,6 @@ def do_opt(opt_setts):
 
 ######
 if __name__ == '__main__':
-
+    t0 = time()
     do_opt(opt_setts_K)
+    print('# Total run time = {}'.format(sec2friendly(time()-t0)))

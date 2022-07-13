@@ -5,6 +5,11 @@ import scipy.stats
 from eqtk import parse_rxns
 import math
 from pdb import set_trace as bp
+from time import strftime, gmtime
+
+
+def sec2friendly(t):
+    return strftime("%H:%M:%S", gmtime(t))
 
 def make_opt_settings(x):
     '''strips _* from dictionary keywords'''

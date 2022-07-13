@@ -217,8 +217,7 @@ class TuneK:
                 axs[0,cc].plot(f_hat, label='Fit')
                 axs[0,cc].plot(self.f_targets[j], label='Target', color='black')
                 axs[0,cc].set_title('Fitting target-{}: MSE {}'.format(j, round(self.mse(f_hat, self.f_targets[j]), 3)))
-                if j==0:
-                    axs[0,cc].legend()
+                axs[0,cc].legend()
 
                 # compute dimers
                 dimer_names = np.array(make_Kij_names(n_input=1, n_accesory=self.m-1))[dimer_inds]
