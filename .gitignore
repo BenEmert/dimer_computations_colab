@@ -3,7 +3,7 @@ data/
 plots/
 .ipynb_checkpoints/
 
-results*
+*results*
 output*
 archive/
 

@@ -118,23 +118,19 @@ class TuneK:
         return np.mean( (f_true - f_pred)**2 )
 
     def make_output_dir(self):
-        # bp()
         t = time.localtime()
         timestamp = time.strftime('%m%d%Y%H%M%S', t)
         base_nm = self.make_experiment_name()
-        self.output_dir = os.path.join(self.base_dir, base_nm + '_' + timestamp)
+        self.output_dir = os.path.join(self.base_dir, timestamp + '_' + base_nm)
         os.makedirs(self.output_dir)
 
     def make_experiment_name(self):
-        foo = {'m': self.m,
-                'Nx': self.n_input_samples,
-                'Nacc': self.n_accessory_samples,
-                'aOpt': self.acc_opt,
-                'wOpt': self.w_opt}
+        foo = {'acc': self.acc_opt, 'weights': self.w_opt}
         mystr = '_'.join([key + '-' + str(foo[key]) for key in foo])
         return mystr
 
     def setup(self):
+        self.Knames = np.array(make_Kij_names(n_input=1, n_accesory=self.m-1))
         self.N = make_nXn_stoich_matrix(self.m)
         self.num_rxns = self.N.shape[0]
         self.M0_min = [self.input_lb] + [0] * (self.m-1)
@@ -178,7 +174,7 @@ class TuneK:
 
         return foo
 
-    def loss_k(self, K, final_run=False, verbose=False):
+    def loss_k(self, K, final_run=False, verbose=False, normalize_plot=False):
         mse_best, mse_list_best, c0_acc_best, theta_best = self.outer_opt(K)
         if verbose or final_run:
             print('MSE:', mse_best)
@@ -190,7 +186,7 @@ class TuneK:
         if final_run:
             N_plot_dimers = min(10, len(K))
             if N_plot_dimers == len(K):
-                dimer_inds = range(N_plot_dimers)
+                dimer_inds = np.arange(N_plot_dimers)
             else:
                 dimer_inds = np.random.choice(np.arange(len(K)), size=N_plot_dimers, replace=False)
 
@@ -198,7 +194,7 @@ class TuneK:
             fig, axs = plt.subplots(nrows=3, ncols=N_plot_targets, figsize = [N_plot_targets*10,20])
             plt.subplots_adjust(left=None, bottom=None, right=None, top=None, wspace=0.4, hspace=0.4)
             if N_plot_targets == self.n_targets:
-                target_inds = range(N_plot_targets)
+                target_inds = np.arange(N_plot_targets)
             else:
                 target_inds = np.random.choice(np.arange(self.n_targets), size=N_plot_targets, replace=False)
             for cc in range(N_plot_targets):
@@ -220,22 +216,33 @@ class TuneK:
                 axs[0,cc].legend()
 
                 # compute dimers
-                dimer_names = np.array(make_Kij_names(n_input=1, n_accesory=self.m-1))[dimer_inds]
-                output_dimers = self.g1(c0_acc, K)[dimer_inds]
+                dimer_names = self.Knames[dimer_inds]
+                output_dimers = self.g1(c0_acc, K)[:,dimer_inds]
                 max_od = np.max(output_dimers, axis=0)
 
-                axs[1,cc].plot(output_dimers/max_od, label=dimer_names)
-                axs[1,cc].set_title('Output Dimers (Max-Normalized)')
+                if normalize_plot:
+                    axs[1,cc].plot(output_dimers/max_od, label=dimer_names)
+                    axs[1,cc].set_title('Output Dimers (Max-Normalized)')
+                    y = theta[dimer_inds]*max_od
+                else:
+                    axs[1,cc].plot(output_dimers, label=dimer_names)
+                    axs[1,cc].set_title('Output Dimers')
+                    axs[1,cc].set_yscale('log')
+                    y = theta[dimer_inds]
+
                 axs[1,cc].legend()
 
-                y = theta[dimer_inds]*max_od
                 x = np.flipud(np.argsort(y))
                 y_sorted = y[x]
                 xseq = np.arange(len(x))
                 axs[2,cc].bar(xseq, y_sorted, color=default_colors[x])
                 axs[2,cc].set_xticks(xseq)
                 axs[2,cc].set_xticklabels(dimer_names[x])
-                axs[2,cc].set_title('Normalized Dimer Weights')
+                if normalize_plot:
+                    axs[2,cc].set_title('Normalized Dimer Weights')
+                else:
+                    axs[2,cc].set_title('Dimer Weights')
+                    axs[2,cc].set_yscale('log')
 
             fig.savefig(os.path.join(self.output_dir, 'optimization_results.pdf'), format='pdf')
 
@@ -285,7 +292,7 @@ class TuneK:
     def set_opts(self):
         if self.acc_opt=='inner' and self.w_opt=='inner':
             # SUM_j min_(a_j, theta_j) |F_j - G(k; a_j, theta_j)|
-            def outer_opt(K, maxiter=3, popsize=15):
+            def outer_opt(K):
                 theta_star = np.zeros((self.n_targets, len(K)))
                 c0_acc_star = np.zeros((self.n_targets, self.m-1))
                 mse_total = 0
@@ -294,9 +301,6 @@ class TuneK:
                     opt = differential_evolution(lambda x: self.inner_opt(x, K, j)[1],
                             bounds = np.vstack((self.acc_lb_list, self.acc_ub_list)).T,
                             **self.opt_settings_outer)
-                            # maxiter = maxiter,
-                            # popsize = popsize,
-                            # workers = 1)
                     c0_acc_star_j = opt.x
                     c0_acc_star[j] = c0_acc_star_j
                     # rerun the best run to get more details
@@ -344,14 +348,11 @@ class TuneK:
 
                 return theta_star, mse_total, mse_list
 
-            def outer_opt(K, maxiter=3, popsize=15):
+            def outer_opt(K):
                 '''Optimize accessory concentrations for the fixed K.'''
                 opt = differential_evolution(lambda x: self.inner_opt(x, K)[1],
                         bounds = np.vstack(([self.acc_lb]*(self.m-1)*self.n_targets, [self.acc_ub]*(self.m-1)*self.n_targets)).T,
                         **self.opt_settings_outer)
-                        # maxiter = maxiter,
-                        # popsize = popsize,
-                        # workers = 1)
                 c0_acc_best = opt.x
                 # rerun the best run to get more details
                 theta_best, mse_total_best, mse_list_best = self.inner_opt(c0_acc_best, K)
@@ -377,14 +378,11 @@ class TuneK:
                     mse_total += mse_j # errs_j is l2 norm, so square it, then divide by N to get MSE
                 return theta_star, mse_total, mse_list
 
-            def outer_opt(K, maxiter=3, popsize=15):
+            def outer_opt(K):
                 '''Optimize accessory concentrations for the fixed K.'''
                 opt = differential_evolution(lambda x: self.inner_opt(x, K)[1],
                         bounds = np.vstack((self.acc_lb_list, self.acc_ub_list)).T,
                         **self.opt_settings_outer)
-                        # maxiter = maxiter,
-                        # popsize = popsize,
-                        # workers = 1)
                 c0_acc_best = opt.x
                 # rerun the best run to get more details
                 theta_best, mse_total_best, mse_list_best = self.inner_opt(c0_acc_best, K)

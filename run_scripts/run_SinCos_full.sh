@@ -11,7 +11,7 @@ TL='SinCos' # Which Target Library to fit to
 # Optimization settings for differential evolution over binding affinities K
 MI_K=3 # Maximum iterations
 PI_K=15 # Population Size (number of particles = 2*dim(K)*PI_K)
-W_K=-1 # number of workers (set to -1 to use maximum available workers)
+W_K=1 # number of workers (set to -1 to use maximum available workers)
 PO_K=1 # Boolean: whether to Polish the optimization using scipy.optimize.minimize (trust-constr to obey bounds)
 
 # Optimization settings for differential evolution over accessory monomers within a single choice of K
@@ -26,7 +26,7 @@ PO_O=1 # Boolean: whether to Polish the optimization using scipy.optimize.minimi
 
 # one accessory concentration shared across all targets
 # different output weights for each target
-python opt_script.py \
+python opt_script_pymoo.py \
     --acc_opt 'outer' \
     --w_opt 'inner' \
     --target_lib_name $TL \
@@ -46,7 +46,7 @@ python opt_script.py \
 
 # different accessory concentrations for each target
 # one output weighting shared across all targets
-python opt_script.py \
+python opt_script_pymoo.py \
     --acc_opt 'inner' \
     --w_opt 'outer' \
     --target_lib_name $TL \
@@ -66,7 +66,7 @@ python opt_script.py \
 
 # different accessory concentrations for each target
 # different output weights for each target
-python opt_script.py \
+python opt_script_pymoo.py \
     --acc_opt 'inner' \
     --w_opt 'inner' \
     --target_lib_name $TL \

@@ -26,7 +26,7 @@ PO_O=1 # Boolean: whether to Polish the optimization using scipy.optimize.minimi
 
 # one accessory concentration shared across all targets
 # different output weights for each target
-python opt_script.py \
+python opt_script_pymoo.py \
     --acc_opt 'outer' \
     --w_opt 'inner' \
     --target_lib_name $TL \
