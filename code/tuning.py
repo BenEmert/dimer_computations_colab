@@ -38,7 +38,7 @@ import eqtk
 # pwd = os.path.abspath('..')
 # sys.path.append(os.path.join(pwd, 'code/'))
 from utilities import *
-from makefuncs import set_target_library
+from makefuncs import *
 
 plt.rcParams.update({'font.size': 22, 'legend.fontsize': 12,
                 'legend.facecolor': 'white', 'legend.framealpha': 0.8,
@@ -123,6 +123,11 @@ class TuneK:
         self.make_output_dir()
 
         self.f_targets = set_target_library(n_input_samples=n_input_samples, target_lib_name=target_lib_name, target_lib_file=target_lib_file)
+        self.n_targets = self.f_targets.shape[0]
+
+    def set_target(self, F):
+        '''Overwrite existing targets'''
+        self.f_targets = interp_target(self.n_input_samples, F)
         self.n_targets = self.f_targets.shape[0]
 
     def mse(self, f_true, f_pred):
