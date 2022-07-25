@@ -12,6 +12,15 @@ import scipy.stats
 import itertools
 from scipy.optimize import minimize, brute, differential_evolution
 
+from pymoo.problems.functional import FunctionalProblem
+from pymoo.optimize import minimize
+from opt_utils import minimize_wrapper
+from pymoo.util.termination.default import SingleObjectiveDefaultTermination
+from pymoo.algorithms.soo.nonconvex.de import DE
+from pymoo.operators.sampling.lhs import LHS
+
+from opt_utils import AnalyzePymoo
+
 # %load_ext watermark
 
 from pdb import set_trace as bp
@@ -55,6 +64,7 @@ class TuneK:
                     centered = True,
                     param_lb = -6,
                     param_ub = 6,
+                    plot_inner_opt = True,
                     **kwargs):
         """
         Run simulations for dimer networks of size m and input titration size t
@@ -101,6 +111,8 @@ class TuneK:
         self.param_lb = param_lb
         self.param_ub = param_ub
         self.opt_settings_outer = opt_settings_outer
+
+        self.plot_inner_opt = plot_inner_opt
 
         self.setup()
 
@@ -152,7 +164,7 @@ class TuneK:
 
         self.acc_lb_list = [self.acc_lb]*(self.m-1)
         self.acc_ub_list = [self.acc_ub]*(self.m-1)
-        self.acc_list = sample_concentrations(self.m-1, self.n_accessory_samples, self.acc_lb_list, self.acc_ub_list, do_power=False) # 75 (number of draws) x 2 (number of accessories)
+        # self.acc_list = sample_concentrations(self.m-1, self.n_accessory_samples, self.acc_lb_list, self.acc_ub_list, do_power=False) # 75 (number of draws) x 2 (number of accessories)
 
         self.param_lb = [self.param_lb]*self.num_rxns
         self.param_ub = [self.param_ub]*self.num_rxns
@@ -290,6 +302,29 @@ class TuneK:
         return mse_best
 
     def set_opts(self):
+
+        self.termination = SingleObjectiveDefaultTermination(
+                            x_tol=1e-6,
+                            cv_tol=0.0,
+                            f_tol=1e-6,
+                            nth_gen=5,
+                            n_last=20,
+                            n_max_gen=self.opt_settings_outer['maxiter'])
+
+        if self.acc_opt=='outer':
+            n_var = self.m-1
+        elif self.acc_opt=='inner':
+            n_var = self.n_targets * (self.m-1)
+
+        self.algorithm = DE(
+            pop_size=self.opt_settings_outer['popsize']*n_var,
+            sampling=LHS(),
+            variant="DE/rand/1/bin",
+            CR=0.9,
+            dither="vector",
+            jitter=False)
+
+
         if self.acc_opt=='inner' and self.w_opt=='inner':
             # SUM_j min_(a_j, theta_j) |F_j - G(k; a_j, theta_j)|
             def outer_opt(K):
@@ -298,10 +333,21 @@ class TuneK:
                 mse_total = 0
                 mse_list = [0 for j in range(self.n_targets)]
                 for j in range(self.n_targets):
-                    opt = differential_evolution(lambda x: self.inner_opt(x, K, j)[1],
-                            bounds = np.vstack((self.acc_lb_list, self.acc_ub_list)).T,
-                            **self.opt_settings_outer)
-                    c0_acc_star_j = opt.x
+                    problem = FunctionalProblem(
+                        n_var=n_var,
+                        objs=lambda x: self.inner_opt(x, K, j)[1],
+                        xl=self.acc_lb_list,
+                        xu=self.acc_ub_list)
+
+                    opt = minimize_wrapper(
+                        problem,
+                        self.algorithm,
+                        self.termination,
+                        save_history=True,
+                        verbose=True,
+                        plot_dirname=os.path.join(self.output_dir,'inner_opt'))
+
+                    c0_acc_star_j = opt.X
                     c0_acc_star[j] = c0_acc_star_j
                     # rerun the best run to get more details
                     theta_star_j, mse_j = self.inner_opt(c0_acc_star_j, K, j)
@@ -350,10 +396,25 @@ class TuneK:
 
             def outer_opt(K):
                 '''Optimize accessory concentrations for the fixed K.'''
-                opt = differential_evolution(lambda x: self.inner_opt(x, K)[1],
-                        bounds = np.vstack(([self.acc_lb]*(self.m-1)*self.n_targets, [self.acc_ub]*(self.m-1)*self.n_targets)).T,
-                        **self.opt_settings_outer)
-                c0_acc_best = opt.x
+
+                problem = FunctionalProblem(
+                    n_var=n_var,
+                    objs=lambda x: self.inner_opt(x, K)[1],
+                    xl=[self.acc_lb]*(self.m-1)*self.n_targets,
+                    xu=[self.acc_ub]*(self.m-1)*self.n_targets)
+
+                opt = minimize_wrapper(
+                    problem,
+                    self.algorithm,
+                    self.termination,
+                    save_history=True,
+                    verbose=True,
+                    plot_dirname=os.path.join(self.output_dir,'inner_opt'))
+
+                # opt = differential_evolution(lambda x: self.inner_opt(x, K)[1],
+                #         bounds = np.vstack(([self.acc_lb]*(self.m-1)*self.n_targets, [self.acc_ub]*(self.m-1)*self.n_targets)).T,
+                #         **self.opt_settings_outer)
+                c0_acc_best = opt.X
                 # rerun the best run to get more details
                 theta_best, mse_total_best, mse_list_best = self.inner_opt(c0_acc_best, K)
 
@@ -380,10 +441,22 @@ class TuneK:
 
             def outer_opt(K):
                 '''Optimize accessory concentrations for the fixed K.'''
-                opt = differential_evolution(lambda x: self.inner_opt(x, K)[1],
-                        bounds = np.vstack((self.acc_lb_list, self.acc_ub_list)).T,
-                        **self.opt_settings_outer)
-                c0_acc_best = opt.x
+
+                problem = FunctionalProblem(
+                    n_var=n_var,
+                    objs=lambda x: self.inner_opt(x, K)[1],
+                    xl=self.acc_lb_list,
+                    xu=self.acc_ub_list)
+
+                opt = minimize_wrapper(
+                    problem,
+                    self.algorithm,
+                    self.termination,
+                    save_history=True,
+                    verbose=True,
+                    plot_dirname=os.path.join(self.output_dir,'inner_opt'))
+
+                c0_acc_best = opt.X
                 # rerun the best run to get more details
                 theta_best, mse_total_best, mse_list_best = self.inner_opt(c0_acc_best, K)
                 return mse_total_best, mse_list_best, c0_acc_best, theta_best

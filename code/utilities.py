@@ -1,4 +1,4 @@
-
+import os, sys
 import itertools
 import numpy as np
 import scipy.stats
@@ -7,6 +7,16 @@ import math
 from pdb import set_trace as bp
 from time import strftime, gmtime
 
+def make_new_dir(x):
+    c = 0
+    while c >=0 :
+        try:
+            newdir = x + '_{}'.format(c)
+            os.makedirs(newdir)
+            c = -1
+        except:
+            c += 1
+    return newdir
 
 def sec2friendly(t):
     return strftime("%H:%M:%S", gmtime(t))
