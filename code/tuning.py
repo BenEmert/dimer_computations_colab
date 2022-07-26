@@ -4,7 +4,6 @@ import seaborn as sns
 import matplotlib
 import matplotlib.pyplot as plt
 
-import pickle
 import functools
 import numpy as np
 import pandas as pd
@@ -114,6 +113,8 @@ class TuneK:
 
         self.plot_inner_opt = plot_inner_opt
 
+        self.truth = {'K': [], 'a0': [], 'theta': []} # useful for plotting inferences vs truth
+
         self.setup()
 
         self.acc_opt = acc_opt
@@ -208,7 +209,7 @@ class TuneK:
                 dimer_inds = np.random.choice(np.arange(len(K)), size=N_plot_dimers, replace=False)
 
             N_plot_targets = min(10, self.n_targets)
-            fig, axs = plt.subplots(nrows=3, ncols=N_plot_targets, figsize = [N_plot_targets*10,20])
+            fig, axs = plt.subplots(nrows=3, ncols=N_plot_targets, figsize = [N_plot_targets*10,20], squeeze=False)
             plt.subplots_adjust(left=None, bottom=None, right=None, top=None, wspace=0.4, hspace=0.4)
             if N_plot_targets == self.n_targets:
                 target_inds = np.arange(N_plot_targets)
@@ -227,8 +228,8 @@ class TuneK:
                     theta = theta_best
 
                 f_hat = self.predict(K, c0_acc, theta)
-                axs[0,cc].plot(f_hat, label='Fit')
                 axs[0,cc].plot(self.f_targets[j], label='Target', color='black')
+                axs[0,cc].plot(f_hat, '--', label='Fit')
                 axs[0,cc].set_title('Fitting target-{}: MSE {}'.format(j, round(self.mse(f_hat, self.f_targets[j]), 3)))
                 axs[0,cc].legend()
 
@@ -301,8 +302,7 @@ class TuneK:
                     'logK': K,
                     'K': np.float_power(10, K)}
 
-            with open(os.path.join(self.output_dir, 'info.pkl'), 'wb') as f:
-                pickle.dump(out, f)
+            dump_data(out, os.path.join(self.output_dir, 'model_info.pkl'), to_dict=False)
 
         return mse_best
 
@@ -350,6 +350,7 @@ class TuneK:
                         self.termination,
                         save_history=True,
                         verbose=True,
+                        truth=self.truth['a0'],
                         plot_dirname=os.path.join(self.output_dir,'inner_opt'))
 
                     c0_acc_star_j = opt.X
@@ -414,6 +415,7 @@ class TuneK:
                     self.termination,
                     save_history=True,
                     verbose=True,
+                    truth=self.truth['a0'],
                     plot_dirname=os.path.join(self.output_dir,'inner_opt'))
 
                 # opt = differential_evolution(lambda x: self.inner_opt(x, K)[1],
@@ -459,6 +461,7 @@ class TuneK:
                     self.termination,
                     save_history=True,
                     verbose=True,
+                    truth=self.truth['a0'],
                     plot_dirname=os.path.join(self.output_dir,'inner_opt'))
 
                 c0_acc_best = opt.X

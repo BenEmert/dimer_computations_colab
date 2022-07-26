@@ -1,11 +1,50 @@
 import os, sys
 import itertools
+import pickle
 import numpy as np
 import scipy.stats
 from eqtk import parse_rxns
 import math
-from pdb import set_trace as bp
 from time import strftime, gmtime
+import json
+
+from pdb import set_trace as bp
+
+class NumpyEncoder(json.JSONEncoder):
+    """ Special json encoder for numpy types """
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return json.JSONEncoder.default(self, obj)
+
+
+def dict_to_file(mydict, fname):
+	dumped = json.dumps(mydict, cls=NumpyEncoder)
+	with open(fname, 'w') as f:
+		json.dump(dumped, f, indent=3)
+	return
+
+def file_to_dict(fname):
+    with open(fname) as f:
+        my_dict = json.load(f)
+    return my_dict
+
+def load_data(fname='input.pkl'):
+    with open(fname, "rb") as f:
+        return pickle.load(f)
+
+def dump_data(out, fname='output.pkl', to_dict=True):
+    with open(fname, 'wb') as f:
+        pickle.dump(out, f)
+    try:
+        dict_to_file(out, os.path.splitext(fname)[0]+'.txt')
+    except:
+        pass
+    return
 
 def make_new_dir(x):
     c = 0

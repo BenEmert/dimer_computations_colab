@@ -6,8 +6,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import pandas as pd
 from pymoo.optimize import minimize
-from utilities import make_new_dir
-import pickle
+from utilities import *
 from pdb import set_trace as bp
 
 plt.rcParams.update({'font.size': 22, 'legend.fontsize': 12,
@@ -18,10 +17,11 @@ default_colors = np.array(plt.rcParams['axes.prop_cycle'].by_key()['color'])
 
 
 def minimize_wrapper(problem, algorithm, termination, seed=None, save_history=True, verbose=True,
-                    n_starts=5,
+                    n_starts=2,
                     plot_convergence=True,
                     plot_comparisons=True,
-                    plot_dirname='optplots'):
+                    plot_dirname='optplots',
+                    truth = []):
 
     opt_list = []
     for n in range(n_starts):
@@ -36,7 +36,7 @@ def minimize_wrapper(problem, algorithm, termination, seed=None, save_history=Tr
         opt_list += [opt]
 
     new_plot_dirname = make_new_dir(plot_dirname)
-    ap = AnalyzePymoo(opt_list)
+    ap = AnalyzePymoo(opt_list, truth=truth)
     ap.make_plots(new_plot_dirname)
 
     return opt_list[0]
@@ -44,9 +44,12 @@ def minimize_wrapper(problem, algorithm, termination, seed=None, save_history=Tr
 class AnalyzePymoo:
     def __init__(self, opt_list,
                     xnames = None,
+                    truth = None,
                     **kwargs):
         self.opt_list = opt_list
         self.xnames = xnames
+
+        self.truth = truth
 
         self.extract_info()
 
@@ -72,9 +75,12 @@ class AnalyzePymoo:
             self.X = np.expand_dims(self.X, 0)
             self.F = np.expand_dims(self.F, 0)
 
+        if self.xnames is None:
+            self.xnames = ['P{}'.format(c) for c in range(self.X.shape[-1])]
+
     def write_info(self, writedir):
-        with open(os.path.join(writedir, 'opt_info.pkl'), 'wb') as f:
-            pickle.dump({'X': self.X, 'F': self.F, 'n_evals': self.n_evals}, f)
+        dump = {'X': self.X, 'F': self.F, 'n_evals': self.n_evals, 'truth': self.truth}
+        dump_data(dump, os.path.join(writedir, 'opt_info.pkl'))
 
 
     def make_plots(self, plotdir):
@@ -95,17 +101,21 @@ class AnalyzePymoo:
             self.plot_params(self.X[n], pdir)
 
 
-    def compare_params(self, plotdir):
+    def compare_params(self, plotdir, nm='a0'):
         fig, axs = plt.subplots(nrows=1, ncols=self.n_params, figsize = [self.n_params*10,8])
         plt.subplots_adjust(left=None, bottom=None, right=None, top=None, wspace=0.6, hspace=0.6)
 
         for n in range(len(self.opt_list)):
             for c in range(self.X.shape[-1]):
-                axs[c].plot(self.n_evals, self.X[n,:,c], label='Run {}'.format(c))
+                axs[c].plot(self.n_evals, self.X[n,:,c], label='Run {}'.format(n))
                 axs[c].set_title("Parameter {}".format(c))
                 axs[c].set_xlabel("Iters")
 
-        axs[0].legend()
+        for c in range(self.X.shape[-1]):
+            if len(self.truth):
+                axs[c].axhline(y=self.truth[c], color='black', linestyle='--', label='True')
+            axs[c].legend()
+
         # axs.set_title("Convergence")
         # axs.plot(self.n_evals, X, label=self.xnames)
         # axs.legend()
@@ -130,6 +140,12 @@ class AnalyzePymoo:
 
         axs.set_title("Convergence")
         axs.plot(self.n_evals, X, label=self.xnames)
+
+        if len(self.truth):
+            for c in range(self.X.shape[-1]):
+                axs.axhline(y=self.truth[c], color=default_colors[c], linestyle='--', label='True')
+
+
         axs.legend()
         fig.savefig(os.path.join(plotdir, 'X_convergence.pdf'), format='pdf')
         plt.close()
@@ -143,12 +159,11 @@ def analyze_convergence(inputdir):
     Fstd = []
     Xstd = []
     for dir in dirlist:
-        with open(os.path.join(inputdir, dir, "opt_info.pkl"), "rb") as f:
-            res = pickle.load(f)
-            X += [res['X']]
-            F += [res['F']]
-            Fstd += [np.std(res['F'],axis=0)]
-            Xstd += [np.sum(np.std(res['X'],axis=0), axis=1)]
+        res = load_data(os.path.join(inputdir, dir, "opt_info.pkl"))
+        X += [res['X']]
+        F += [res['F']]
+        Fstd += [np.std(res['F'],axis=0)]
+        Xstd += [np.sum(np.std(res['X'],axis=0), axis=1)]
     n_evals = res['n_evals']
 
     X = np.vstack(X)
@@ -188,7 +203,7 @@ def analyze_convergence(inputdir):
         for iter in range(X.shape[1]):
             for rn in range(X.shape[0]):
                 foo = pd.DataFrame([{'iteration':iter, 'rn': rn, 'parameter': pname, 'value': X[rn,iter,p]}])
-                dfX = dfX.append(foo)
+                dfX = pd.concatenate(dfX, foo)
     dfX = dfX.reset_index()
     fig, axs = plt.subplots(nrows=1, ncols=1, figsize = [14,8])
     plt.subplots_adjust(left=None, bottom=None, right=None, top=None, wspace=0.6, hspace=0.6)
