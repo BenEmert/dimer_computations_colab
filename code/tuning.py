@@ -64,6 +64,7 @@ class TuneK:
                     param_lb = -6,
                     param_ub = 6,
                     plot_inner_opt = True,
+                    polish = False,
                     **kwargs):
         """
         Run simulations for dimer networks of size m and input titration size t
@@ -110,6 +111,7 @@ class TuneK:
         self.param_lb = param_lb
         self.param_ub = param_ub
         self.opt_settings_outer = opt_settings_outer
+        self.polish = polish
 
         self.plot_inner_opt = plot_inner_opt
 
@@ -192,13 +194,66 @@ class TuneK:
 
         return foo
 
-    def loss_k(self, K, final_run=False, verbose=False, normalize_plot=False):
-        mse_best, mse_list_best, c0_acc_best, theta_best = self.outer_opt(K)
+    def loss_surface_k(self, K, a_list=[], nx=100):
+        a0 = np.linspace(self.acc_lb_list, self.acc_ub_list, nx).T
+        xv, yv = np.meshgrid(*a0)
+        zs = np.zeros((nx,nx))
+        for i in range(nx):
+            for j in range(nx):
+                # treat xv[i,j], yv[i,j]
+                c0_acc = np.array([xv[i,j], yv[i,j]])
+                theta_star, mse_total, mse_list = self.inner_opt(c0_acc, K)
+                zs[i,j] = mse_total
+
+        for nm in ['', '_log']:
+            fig, axs = plt.subplots(nrows=1, ncols=1, figsize = [10,10])
+            plt.subplots_adjust(left=None, bottom=None, right=None, top=None, wspace=0.4, hspace=0.4)
+            if nm=='_log':
+                zfoo = np.log10(zs)
+            else:
+                zfoo = zs
+            cf = axs.contourf(a0[0], a0[1], zfoo)
+            axs.set_xlabel('a_0')
+            axs.set_ylabel('a_1')
+            axs.axvline(x=self.truth['a0'][0], color='red', linestyle='--', linewidth=1)
+            axs.axhline(y=self.truth['a0'][1], color='red', linestyle='--', linewidth=1)
+            for c in range(len(a_list)):
+                aopt = a_list[c]
+                axs.scatter(aopt[0], aopt[1], s=500, c=default_colors[c+1], marker='+', label='Run {}'.format(c))
+                axs.legend()
+            cbar = fig.colorbar(cf)
+            cbar.ax.set_ylabel('MSE' + nm)
+
+            # axs.scatter(self.truth['a0'][0], self.truth['a0'][1], s=1000, c='red', marker="*")
+            fig.savefig(os.path.join(self.output_dir, 'inner_loss_surface{}.pdf'.format(nm)), format='pdf')
+
+
+    def loss_k(self, K, final_run=False, verbose=False, normalize_plot=False, plot_surface=False):
+        output_list = self.outer_opt(K)
+        c = -1
+        for info_dict in output_list:
+            c += 1
+            mse_best = self.one_loss_k(K, **info_dict,
+                            final_run=final_run,
+                            verbose=verbose,
+                            normalize_plot=normalize_plot,
+                            output_dir=os.path.join(self.output_dir,'run_{}'.format(c)))
+
+        if plot_surface:
+            a0_list = [d['c0_acc_best'] for d in output_list]
+            self.loss_surface_k(K, a_list=a0_list)
+        return mse_best
+
+    def one_loss_k(self, K, mse_best=None, mse_list_best=None, c0_acc_best=None, theta_best=None,
+                    final_run=False, verbose=False, normalize_plot=False,
+                    output_dir=None):
+        os.makedirs(output_dir, exist_ok=True)
+
         if verbose or final_run:
+            print('log(K):', K)
             print('MSE:', mse_best)
             print('MSE per target:', mse_list_best)
             print('Accessory concentrations:', c0_acc_best)
-            print('log(K):', K)
             print('theta:', theta_best)
 
         if final_run:
@@ -262,7 +317,7 @@ class TuneK:
                     axs[2,cc].set_title('Dimer Weights')
                     axs[2,cc].set_yscale('log')
 
-            fig.savefig(os.path.join(self.output_dir, 'optimization_results.pdf'), format='pdf')
+            fig.savefig(os.path.join(output_dir, 'optimization_results.pdf'), format='pdf')
 
             # plot output dimers
             if self.acc_opt=='outer':
@@ -271,7 +326,7 @@ class TuneK:
                 axs.plot(output_dimers)
                 axs.set_title('Output Dimers')
                 axs.set_yscale('log')
-                fig.savefig(os.path.join(self.output_dir, 'output_dimers.pdf'), format='pdf')
+                fig.savefig(os.path.join(output_dir, 'output_dimers.pdf'), format='pdf')
 
             # plot accessory values
             fig, axs = plt.subplots(nrows=1, ncols=1, figsize = [14,8])
@@ -281,7 +336,7 @@ class TuneK:
             axs.set_ylabel('Target Function Index')
             axs.set_xlabel('Accessory Monomer Index')
             axs.set_title('Optimized Accessory Monomer Concentrations (log10)')
-            fig.savefig(os.path.join(self.output_dir, 'accessory_concentrations.pdf'), format='pdf')
+            fig.savefig(os.path.join(output_dir, 'accessory_concentrations.pdf'), format='pdf')
 
             ## plot optimal K
             mask = np.tril(np.ones(self.m),-1) # creating mask
@@ -292,7 +347,7 @@ class TuneK:
             axs.set_xticklabels(np.arange(1,self.m+1))
             axs.set_yticklabels(np.arange(1,self.m+1))
             axs.set_title('Optimized Binding Affinity Matrix (log10)')
-            fig.savefig(os.path.join(self.output_dir, 'logK.pdf'), format='pdf')
+            fig.savefig(os.path.join(output_dir, 'logK.pdf'), format='pdf')
 
             # save results
             out = {'MSE': mse_best,
@@ -302,7 +357,7 @@ class TuneK:
                     'logK': K,
                     'K': np.float_power(10, K)}
 
-            dump_data(out, os.path.join(self.output_dir, 'model_info.pkl'), to_dict=False)
+            dump_data(out, os.path.join(output_dir, 'model_info.pkl'), to_dict=False)
 
         return mse_best
 
@@ -311,7 +366,7 @@ class TuneK:
         self.termination = SingleObjectiveDefaultTermination(
                             x_tol=1e-6,
                             cv_tol=0.0,
-                            f_tol=1e-6,
+                            f_tol=1e-10,
                             nth_gen=5,
                             n_last=20,
                             n_max_gen=self.opt_settings_outer['maxiter'])
@@ -349,6 +404,7 @@ class TuneK:
                         self.algorithm,
                         self.termination,
                         save_history=True,
+                        polish=self.polish,
                         verbose=True,
                         truth=self.truth['a0'],
                         plot_dirname=os.path.join(self.output_dir,'inner_opt'))
@@ -409,11 +465,12 @@ class TuneK:
                     xl=[self.acc_lb]*(self.m-1)*self.n_targets,
                     xu=[self.acc_ub]*(self.m-1)*self.n_targets)
 
-                opt = minimize_wrapper(
+                opt_list = minimize_wrapper(
                     problem,
                     self.algorithm,
                     self.termination,
                     save_history=True,
+                    polish=self.polish,
                     verbose=True,
                     truth=self.truth['a0'],
                     plot_dirname=os.path.join(self.output_dir,'inner_opt'))
@@ -421,13 +478,20 @@ class TuneK:
                 # opt = differential_evolution(lambda x: self.inner_opt(x, K)[1],
                 #         bounds = np.vstack(([self.acc_lb]*(self.m-1)*self.n_targets, [self.acc_ub]*(self.m-1)*self.n_targets)).T,
                 #         **self.opt_settings_outer)
-                c0_acc_best = opt.X
-                # rerun the best run to get more details
-                theta_best, mse_total_best, mse_list_best = self.inner_opt(c0_acc_best, K)
+                output_list = []
+                for opt in opt_list:
+                    c0_acc_best = opt.X
+                    # rerun the best run to get more details
+                    theta_best, mse_total_best, mse_list_best = self.inner_opt(c0_acc_best, K)
+                    # convert c0_acc_best to a shaped array
+                    c0_acc_best = c0_acc_best.reshape(self.n_targets,-1)
 
-                # convert c0_acc_best to a shaped array
-                c0_acc_best = c0_acc_best.reshape(self.n_targets,-1)
-                return mse_total_best, mse_list_best, c0_acc_best, theta_best
+                    info_dict = {'mse_best': mse_total_best,
+                                 'mse_list_best': mse_list_best,
+                                 'c0_acc_best': c0_acc_best,
+                                 'theta_best': theta_best}
+                    output_list.append(info_dict)
+                return output_list
 
         elif self.acc_opt=='outer' and self.w_opt=='inner':
             # min_a SUM_j min_(theta_j) |F_j - G(k; a, theta_j)|
@@ -455,19 +519,27 @@ class TuneK:
                     xl=self.acc_lb_list,
                     xu=self.acc_ub_list)
 
-                opt = minimize_wrapper(
+                opt_list = minimize_wrapper(
                     problem,
                     self.algorithm,
                     self.termination,
                     save_history=True,
+                    polish=self.polish,
                     verbose=True,
                     truth=self.truth['a0'],
                     plot_dirname=os.path.join(self.output_dir,'inner_opt'))
 
-                c0_acc_best = opt.X
-                # rerun the best run to get more details
-                theta_best, mse_total_best, mse_list_best = self.inner_opt(c0_acc_best, K)
-                return mse_total_best, mse_list_best, c0_acc_best, theta_best
+                output_list = []
+                for opt in opt_list:
+                    c0_acc_best = opt.X
+                    # rerun the best run to get more details
+                    theta_best, mse_total_best, mse_list_best = self.inner_opt(c0_acc_best, K)
+                    info_dict = {'mse_best': mse_total_best,
+                                 'mse_list_best': mse_list_best,
+                                 'c0_acc_best': c0_acc_best,
+                                 'theta_best': theta_best}
+                    output_list.append(info_dict)
+                return output_list
 
         elif self.acc_opt=='outer' and self.w_opt=='outer':
             # min_(a, theta) SUM_j  |F_j - G(k; a, theta)|

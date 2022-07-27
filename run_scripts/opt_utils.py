@@ -6,6 +6,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import pandas as pd
 from pymoo.optimize import minimize
+import scipy.optimize
 from utilities import *
 from pdb import set_trace as bp
 
@@ -21,6 +22,7 @@ def minimize_wrapper(problem, algorithm, termination, seed=None, save_history=Tr
                     plot_convergence=True,
                     plot_comparisons=True,
                     plot_dirname='optplots',
+                    polish=False,
                     truth = []):
 
     opt_list = []
@@ -33,13 +35,22 @@ def minimize_wrapper(problem, algorithm, termination, seed=None, save_history=Tr
             save_history=True,
             verbose=True)
 
+        # optionally run a local optimizer to polish the optimization
+        if polish:
+            result = scipy.optimize.minimize(problem.objs[0],
+                              opt.X,
+                              method='trust-constr',
+                              bounds=np.array([problem.xl, problem.xu]).T)
+            opt.X = result.x
+            opt.F = result.fun
+
         opt_list += [opt]
 
     new_plot_dirname = make_new_dir(plot_dirname)
     ap = AnalyzePymoo(opt_list, truth=truth)
     ap.make_plots(new_plot_dirname)
 
-    return opt_list[0]
+    return opt_list
 
 class AnalyzePymoo:
     def __init__(self, opt_list,
