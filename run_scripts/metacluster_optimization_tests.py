@@ -135,8 +135,6 @@ def opt_wrapper(opt_setts, n_targets=10):
         F = output[None,:,ip, iw] # target function
 
         # set the target
-        bp()
-        print('MATT: Next step is to build this analysis for multi-targets ')
         FOO.set_target(F) #wipes other targets and focuses on this one (interpolates, then re-discretizes)
 
         # set the TRUTH (only used for plotting!!!!)
