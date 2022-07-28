@@ -150,6 +150,7 @@ class TuneK:
         return mystr
 
     def setup(self):
+
         self.Knames = np.array(make_Kij_names(n_input=1, n_accesory=self.m-1))
         self.N = make_nXn_stoich_matrix(self.m)
         self.num_rxns = self.N.shape[0]
@@ -159,6 +160,7 @@ class TuneK:
 
         self.n_dimers = len(self.Knames)
         self.C0 = make_C0_grid(self.m, M0_min=self.M0_min, M0_max=self.M0_max, num_conc=self.num_conc)
+        self.input_concentration = self.C0[:,0] # input monomer
 
         self.num_params = self.num_rxns + (self.m-1)
 
@@ -285,9 +287,11 @@ class TuneK:
                     theta = theta_best
 
                 f_hat = self.predict(K, c0_acc, theta)
-                axs[0,cc].plot(self.f_targets[j], label='Target', color='black')
-                axs[0,cc].plot(f_hat, '--', label='Fit')
+                axs[0,cc].plot(self.input_concentration, self.f_targets[j], label='Target', color='black')
+                axs[0,cc].plot(self.input_concentration, f_hat, '--', label='Fit')
+                axs[0,cc].set_xlabel('[Input Monomer]')
                 axs[0,cc].set_title('Fitting target-{}: MSE {}'.format(j, round(self.mse(f_hat, self.f_targets[j]), 3)))
+                axs[0,cc].set_xscale('log')
                 axs[0,cc].legend()
 
                 # compute dimers
@@ -296,15 +300,17 @@ class TuneK:
                 max_od = np.max(output_dimers, axis=0)
 
                 if normalize_plot:
-                    axs[1,cc].plot(output_dimers/max_od, label=dimer_names)
-                    axs[1,cc].set_title('Output Dimers (Max-Normalized)')
+                    axs[1,cc].plot(self.input_concentration, output_dimers/max_od, label=dimer_names)
+                    axs[1,cc].set_title('[Output Dimers (Max-Normalized)]')
                     y = theta[dimer_inds]*max_od
                 else:
-                    axs[1,cc].plot(output_dimers, label=dimer_names)
-                    axs[1,cc].set_title('Output Dimers')
+                    axs[1,cc].plot(self.input_concentration, output_dimers, label=dimer_names)
+                    axs[1,cc].set_title('[Output Dimers]')
                     axs[1,cc].set_yscale('log')
                     y = theta[dimer_inds]
 
+                axs[1,cc].set_xscale('log')
+                axs[1,cc].set_xlabel('[Input Monomer]')
                 axs[1,cc].legend()
 
                 x = np.flipud(np.argsort(y))
@@ -420,7 +426,8 @@ class TuneK:
                 '''Compute the optimal weights for each target function given fixed K and accessorry concentrations'''
                 dimers = self.g1(c0_acc, K) # 40 x 9
                 theta_star_j, errs_j = scipy.optimize.nnls(dimers, self.f_targets[j_target]) # returns L2 errors (sqrt of sum of squares)
-                mse_j = errs_j**2 / self.n_input_samples
+                f_j_max = np.max(self.f_targets[j_target])
+                mse_j = errs_j**2 / self.n_input_samples / (f_j_max*82)
                 return theta_star_j, mse_j
 
 
@@ -443,14 +450,14 @@ class TuneK:
                 # instead of NNLS, use lsq_linear because it returns pointwise residuals automatically, rather than just overall MSE.
                 foo = scipy.optimize.lsq_linear(dimers_all, targets_all, bounds=(0, np.Inf), method='bvls')
                 theta_star = foo.x
-                mse_total = np.sum(foo.fun**2) / self.n_input_samples
+                mse_total = np.sum(foo.fun**2) / self.n_input_samples / np.sum(np.max(self.f_targets, axis=1)**2)
 
                 # compute listed MSEs
                 mse_list = [0 for j in range(self.n_targets)]
                 for j in range(self.n_targets):
                     i_low = j*(self.m-1)
                     i_high = i_low + (self.m-1)
-                    mse_list[j] = np.sum(foo.fun[i_low:i_high]**2) / self.n_input_samples
+                    mse_list[j] = np.sum(foo.fun[i_low:i_high]**2) / self.n_input_samples / np.sum(np.max(self.f_targets[i_low:i_high], axis=1)**2)
 
                 return theta_star, mse_total, mse_list
 
@@ -503,8 +510,9 @@ class TuneK:
                 mse_list = [0 for j in range(self.n_targets)]
                 for j in range(self.n_targets):
                     opt_j, errs_j = scipy.optimize.nnls(dimers, self.f_targets[j]) # returns L2 errors (sqrt of sum of squares)
+                    f_j_max = np.max(self.f_targets[j])
                     theta_star[j] = opt_j
-                    mse_j = errs_j**2 / self.n_input_samples
+                    mse_j = errs_j**2 / self.n_input_samples / (f_j_max**2)
                     mse_list[j] = mse_j
                     mse_total += mse_j # errs_j is l2 norm, so square it, then divide by N to get MSE
                 return theta_star, mse_total, mse_list
