@@ -337,24 +337,37 @@ class TuneK:
                 fig.savefig(os.path.join(output_dir, 'output_dimers.pdf'), format='pdf')
 
             # plot accessory values
-            fig, axs = plt.subplots(nrows=1, ncols=1, figsize = [14,8])
+            a_dict = {'Learnt': np.array(c0_acc_best).reshape(-1, self.m-1)}
+            if len(self.truth['a0']):
+                a_dict['True'] = np.array(self.truth['a0']).reshape(-1, self.m-1)
+            fig, axs = plt.subplots(nrows=1, ncols=len(a_dict), figsize = [len(a_dict)*12,10], squeeze=False)
             plt.subplots_adjust(left=None, bottom=None, right=None, top=None, wspace=0.6, hspace=0.6)
-            sns.heatmap(ax=axs, data=np.array(c0_acc_best).reshape(-1, self.m-1), cmap="viridis", vmin=self.acc_lb, vmax=self.acc_ub)
-            axs.set_xticklabels(np.arange(2,self.m+1))
-            axs.set_ylabel('Target Function Index')
-            axs.set_xlabel('Accessory Monomer Index')
-            axs.set_title('Optimized Accessory Monomer Concentrations (log10)')
+            c = -1
+            for nm, val in a_dict.items():
+                c += 1
+                ax = axs[0,c]
+                sns.heatmap(ax=ax, data=val, cmap="viridis", vmin=self.acc_lb, vmax=self.acc_ub)
+                ax.set_xticklabels(np.arange(2,self.m+1))
+                ax.set_ylabel('Target Function Index')
+                ax.set_xlabel('Accessory Monomer Index')
+                ax.set_title('{} Accessory Monomer Concentrations (log10)'.format(nm))
             fig.savefig(os.path.join(output_dir, 'accessory_concentrations.pdf'), format='pdf')
 
             ## plot optimal K
             mask = np.tril(np.ones(self.m),-1) # creating mask
-            Kmatrix = make_K_matrix(K, self.m)
-            # plotting a triangle correlation heatmap
-            fig, axs = plt.subplots(nrows=1, ncols=1, figsize = [10,10])
-            sns.heatmap(ax=axs, data=Kmatrix, cmap="viridis", mask=mask, vmin=self.param_lb[0], vmax=self.param_ub[0])
-            axs.set_xticklabels(np.arange(1,self.m+1))
-            axs.set_yticklabels(np.arange(1,self.m+1))
-            axs.set_title('Optimized Binding Affinity Matrix (log10)')
+            K_dict = {'Learnt': make_K_matrix(K, self.m)}
+            if len(self.truth['K']):
+                K_dict['True'] = make_K_matrix(self.truth['K'], self.m)
+            fig, axs = plt.subplots(nrows=1, ncols=len(K_dict), figsize = [len(a_dict)*10,10], squeeze=False)
+            c = -1
+            for nm, val in K_dict.items():
+                c += 1
+                ax = axs[0,c]
+                # plotting a triangle correlation heatmap
+                sns.heatmap(ax=ax, data=val, cmap="viridis", mask=mask, vmin=self.param_lb[0], vmax=self.param_ub[0])
+                ax.set_xticklabels(np.arange(1,self.m+1))
+                ax.set_yticklabels(np.arange(1,self.m+1))
+                ax.set_title('{} Binding Affinity Matrix (log10)'.format(nm))
             fig.savefig(os.path.join(output_dir, 'logK.pdf'), format='pdf')
 
             # save results
