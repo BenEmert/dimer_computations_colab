@@ -225,6 +225,7 @@ def make_K_matrix(K_vec, m):
     """
     Create Kij names for ordering parameters
     """
+    K_vec = np.squeeze(np.array(K_vec)).tolist() # be flexible to array / list inputs
     K = np.zeros((m,m))
     cc = -1
     for i in range(m):

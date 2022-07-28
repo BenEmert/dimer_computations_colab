@@ -9,6 +9,7 @@ from pymoo.optimize import minimize
 import scipy.optimize
 from utilities import *
 from pdb import set_trace as bp
+from time import time
 
 plt.rcParams.update({'font.size': 22, 'legend.fontsize': 12,
                 'legend.facecolor': 'white', 'legend.framealpha': 0.8,
@@ -17,14 +18,16 @@ plt.rcParams.update({'font.size': 22, 'legend.fontsize': 12,
 default_colors = np.array(plt.rcParams['axes.prop_cycle'].by_key()['color'])
 
 
-def minimize_wrapper(problem, algorithm, termination, seed=None, save_history=True, verbose=True,
+def minimize_wrapper(problem, algorithm, termination, seed=None, save_history=True,
+                    verbose=True,
                     n_starts=2,
-                    plot_convergence=True,
-                    plot_comparisons=True,
+                    plot_analyses=True,
                     plot_dirname='optplots',
                     polish=False,
+                    report_times=False,
                     truth = []):
 
+    t0 = time()
     opt_list = []
     for n in range(n_starts):
         opt = minimize(
@@ -32,8 +35,8 @@ def minimize_wrapper(problem, algorithm, termination, seed=None, save_history=Tr
             algorithm,
             termination,
             seed=seed,
-            save_history=True,
-            verbose=True)
+            save_history=save_history,
+            verbose=verbose)
 
         # optionally run a local optimizer to polish the optimization
         if polish:
@@ -46,9 +49,16 @@ def minimize_wrapper(problem, algorithm, termination, seed=None, save_history=Tr
 
         opt_list += [opt]
 
-    new_plot_dirname = make_new_dir(plot_dirname)
-    ap = AnalyzePymoo(opt_list, truth=truth)
-    ap.make_plots(new_plot_dirname)
+    if report_times:
+        print('Minimization took {} seconds'.format(time() - t0))
+
+    if plot_analyses:
+        t0 = time()
+        new_plot_dirname = make_new_dir(plot_dirname)
+        ap = AnalyzePymoo(opt_list, truth=truth)
+        ap.make_plots(new_plot_dirname)
+        if report_times:
+            print('Analysis took {} seconds'.format(time() - t0))
 
     return opt_list
 
@@ -123,7 +133,7 @@ class AnalyzePymoo:
                 axs[c].set_xlabel("Iters")
 
         for c in range(self.X.shape[-1]):
-            if len(self.truth):
+            if self.truth is not None:
                 axs[c].axhline(y=self.truth[c], color='black', linestyle='--', label='True')
             axs[c].legend()
 
@@ -152,7 +162,7 @@ class AnalyzePymoo:
         axs.set_title("Convergence")
         axs.plot(self.n_evals, X, label=self.xnames)
 
-        if len(self.truth):
+        if self.truth is not None:
             for c in range(self.X.shape[-1]):
                 axs.axhline(y=self.truth[c], color=default_colors[c], linestyle='--', label='True')
 

@@ -157,6 +157,7 @@ class TuneK:
         self.M0_max = [self.input_ub] + [0] * (self.m-1)
         self.num_conc = [self.n_input_samples] + [1] * (self.m-1)
 
+        self.n_dimers = len(self.Knames)
         self.C0 = make_C0_grid(self.m, M0_min=self.M0_min, M0_max=self.M0_max, num_conc=self.num_conc)
 
         self.num_params = self.num_rxns + (self.m-1)
@@ -228,8 +229,9 @@ class TuneK:
             fig.savefig(os.path.join(self.output_dir, 'inner_loss_surface{}.pdf'.format(nm)), format='pdf')
 
 
-    def loss_k(self, K, final_run=False, verbose=False, normalize_plot=False, plot_surface=False):
-        output_list = self.outer_opt(K)
+    def loss_k(self, K, n_starts=1, final_run=False, verbose=False, normalize_plot=False, plot_surface=False):
+        self.n_starts = n_starts
+        output_list = self.outer_opt(K, verbose=verbose)
         c = -1
         for info_dict in output_list:
             c += 1
@@ -257,11 +259,11 @@ class TuneK:
             print('theta:', theta_best)
 
         if final_run:
-            N_plot_dimers = min(10, len(K))
-            if N_plot_dimers == len(K):
+            N_plot_dimers = min(10, self.n_dimers)
+            if N_plot_dimers == self.n_dimers:
                 dimer_inds = np.arange(N_plot_dimers)
             else:
-                dimer_inds = np.random.choice(np.arange(len(K)), size=N_plot_dimers, replace=False)
+                dimer_inds = np.random.choice(np.arange(self.n_dimers), size=N_plot_dimers, replace=False)
 
             N_plot_targets = min(10, self.n_targets)
             fig, axs = plt.subplots(nrows=3, ncols=N_plot_targets, figsize = [N_plot_targets*10,20], squeeze=False)
@@ -376,19 +378,14 @@ class TuneK:
         elif self.acc_opt=='inner':
             n_var = self.n_targets * (self.m-1)
 
-        self.algorithm = DE(
-            pop_size=self.opt_settings_outer['popsize']*n_var,
-            sampling=LHS(),
-            variant="DE/rand/1/bin",
-            CR=0.9,
-            dither="vector",
-            jitter=False)
+        self.algorithm = DE(CR=0.9,
+            pop_size=self.opt_settings_outer['popsize']*n_var)
 
 
         if self.acc_opt=='inner' and self.w_opt=='inner':
             # SUM_j min_(a_j, theta_j) |F_j - G(k; a_j, theta_j)|
-            def outer_opt(K):
-                theta_star = np.zeros((self.n_targets, len(K)))
+            def outer_opt(K, verbose=True):
+                theta_star = np.zeros((self.n_targets, self.n_dimers))
                 c0_acc_star = np.zeros((self.n_targets, self.m-1))
                 mse_total = 0
                 mse_list = [0 for j in range(self.n_targets)]
@@ -403,9 +400,10 @@ class TuneK:
                         problem,
                         self.algorithm,
                         self.termination,
+                        n_starts=self.n_starts,
                         save_history=True,
                         polish=self.polish,
-                        verbose=True,
+                        verbose=verbose,
                         truth=self.truth['a0'],
                         plot_dirname=os.path.join(self.output_dir,'inner_opt'))
 
@@ -456,7 +454,7 @@ class TuneK:
 
                 return theta_star, mse_total, mse_list
 
-            def outer_opt(K):
+            def outer_opt(K, verbose=True):
                 '''Optimize accessory concentrations for the fixed K.'''
 
                 problem = FunctionalProblem(
@@ -469,9 +467,10 @@ class TuneK:
                     problem,
                     self.algorithm,
                     self.termination,
+                    n_starts=self.n_starts,
                     save_history=True,
                     polish=self.polish,
-                    verbose=True,
+                    verbose=verbose,
                     truth=self.truth['a0'],
                     plot_dirname=os.path.join(self.output_dir,'inner_opt'))
 
@@ -510,7 +509,7 @@ class TuneK:
                     mse_total += mse_j # errs_j is l2 norm, so square it, then divide by N to get MSE
                 return theta_star, mse_total, mse_list
 
-            def outer_opt(K):
+            def outer_opt(K, verbose=True):
                 '''Optimize accessory concentrations for the fixed K.'''
 
                 problem = FunctionalProblem(
@@ -523,9 +522,10 @@ class TuneK:
                     problem,
                     self.algorithm,
                     self.termination,
+                    n_starts=self.n_starts,
                     save_history=True,
                     polish=self.polish,
-                    verbose=True,
+                    verbose=verbose,
                     truth=self.truth['a0'],
                     plot_dirname=os.path.join(self.output_dir,'inner_opt'))
 
