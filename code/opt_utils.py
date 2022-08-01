@@ -65,7 +65,7 @@ def minimize_wrapper(problem, algorithm, termination, seed=None, save_history=Tr
 class AnalyzePymoo:
     def __init__(self, opt_list,
                     xnames = None,
-                    truth = None,
+                    truth = [],
                     **kwargs):
         self.opt_list = opt_list
         self.xnames = xnames
@@ -133,7 +133,7 @@ class AnalyzePymoo:
                 axs[c].set_xlabel("Iters")
 
         for c in range(self.X.shape[-1]):
-            if self.truth is not None:
+            if len(self.truth):
                 axs[c].axhline(y=self.truth[c], color='black', linestyle='--', label='True')
             axs[c].legend()
 
@@ -162,7 +162,7 @@ class AnalyzePymoo:
         axs.set_title("Convergence")
         axs.plot(self.n_evals, X, label=self.xnames)
 
-        if self.truth is not None:
+        if len(self.truth):
             for c in range(self.X.shape[-1]):
                 axs.axhline(y=self.truth[c], color=default_colors[c], linestyle='--', label='True')
 
@@ -199,6 +199,7 @@ def analyze_convergence(inputdir):
     fig, axs = plt.subplots(nrows=1, ncols=1, figsize = [14,8])
     sns.lineplot(ax=axs, data=df, x='iteration', y='value')
     fig.savefig(os.path.join(inputdir, 'Fstd_convergence.pdf'), format='pdf')
+    plt.close()
 
     # plot X optimization variancex
     df = pd.DataFrame(Xstd.T)
@@ -207,6 +208,7 @@ def analyze_convergence(inputdir):
     fig, axs = plt.subplots(nrows=1, ncols=1, figsize = [14,8])
     sns.lineplot(ax=axs, data=df, x='iteration', y='value')
     fig.savefig(os.path.join(inputdir, 'Xstd_convergence.pdf'), format='pdf')
+    plt.close()
 
     # plot F optimization
     df = pd.DataFrame(F.T)
@@ -216,6 +218,7 @@ def analyze_convergence(inputdir):
     plt.subplots_adjust(left=None, bottom=None, right=None, top=None, wspace=0.6, hspace=0.6)
     sns.lineplot(ax=axs, data=df, x='iteration', y='value')
     fig.savefig(os.path.join(inputdir, 'F_convergence.pdf'), format='pdf')
+    plt.close()
 
     # plot X optimization
     dfX = pd.DataFrame()
@@ -230,3 +233,4 @@ def analyze_convergence(inputdir):
     plt.subplots_adjust(left=None, bottom=None, right=None, top=None, wspace=0.6, hspace=0.6)
     sns.lineplot(ax=axs, data=dfX, x='iteration', y='value', hue='parameter', ci='sd')
     fig.savefig(os.path.join(inputdir, 'X_convergence.pdf'), format='pdf')
+    plt.close()

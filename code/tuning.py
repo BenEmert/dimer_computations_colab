@@ -218,8 +218,9 @@ class TuneK:
             cf = axs.contourf(a0[0], a0[1], zfoo)
             axs.set_xlabel('a_0')
             axs.set_ylabel('a_1')
-            axs.axvline(x=self.truth['a0'][0], color='red', linestyle='--', linewidth=1)
-            axs.axhline(y=self.truth['a0'][1], color='red', linestyle='--', linewidth=1)
+            if len(self.truth['a0']):
+                axs.axvline(x=self.truth['a0'][0], color='red', linestyle='--', linewidth=1)
+                axs.axhline(y=self.truth['a0'][1], color='red', linestyle='--', linewidth=1)
             for c in range(len(a_list)):
                 aopt = a_list[c]
                 axs.scatter(aopt[0], aopt[1], s=500, c=default_colors[c+1], marker='+', label='Run {}'.format(c))
@@ -229,6 +230,7 @@ class TuneK:
 
             # axs.scatter(self.truth['a0'][0], self.truth['a0'][1], s=1000, c='red', marker="*")
             fig.savefig(os.path.join(self.output_dir, 'inner_loss_surface{}.pdf'.format(nm)), format='pdf')
+            plt.close()
 
 
     def loss_k(self, K, n_starts=1, final_run=False, verbose=False, normalize_plot=False, plot_surface=False):
@@ -326,6 +328,7 @@ class TuneK:
                     axs[2,cc].set_yscale('log')
 
             fig.savefig(os.path.join(output_dir, 'optimization_results.pdf'), format='pdf')
+            plt.close()
 
             # plot output dimers
             if self.acc_opt=='outer':
@@ -335,6 +338,7 @@ class TuneK:
                 axs.set_title('Output Dimers')
                 axs.set_yscale('log')
                 fig.savefig(os.path.join(output_dir, 'output_dimers.pdf'), format='pdf')
+                plt.close()
 
             # plot accessory values
             a_dict = {'Learnt': np.array(c0_acc_best).reshape(-1, self.m-1)}
@@ -352,6 +356,7 @@ class TuneK:
                 ax.set_xlabel('Accessory Monomer Index')
                 ax.set_title('{} Accessory Monomer Concentrations (log10)'.format(nm))
             fig.savefig(os.path.join(output_dir, 'accessory_concentrations.pdf'), format='pdf')
+            plt.close()
 
             ## plot optimal K
             mask = np.tril(np.ones(self.m),-1) # creating mask
@@ -369,6 +374,7 @@ class TuneK:
                 ax.set_yticklabels(np.arange(1,self.m+1))
                 ax.set_title('{} Binding Affinity Matrix (log10)'.format(nm))
             fig.savefig(os.path.join(output_dir, 'logK.pdf'), format='pdf')
+            plt.close()
 
             # save results
             out = {'MSE': mse_best,
