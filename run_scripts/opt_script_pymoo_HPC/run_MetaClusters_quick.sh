@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 
 base_dir='../results/metaClusters_short'
-TF='../data/hc_3M_metaClusterBasis_thresh3.npy'
+TF='../data/metaclusters/hc_3M_metaClusterBasis_thresh3.npy'
 monomers=3 # Total number of monomers
 N=40 # Number of values to titrate the input monomer species. Values spaced evenly on a log10 scale
 # TL='SinCos' # Which Target Library to fit to
