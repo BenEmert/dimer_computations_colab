@@ -2,13 +2,10 @@
 
 #Submit this script with: sbatch thefilename
 
-#SBATCH --time=24:00:00   # walltime
-#SBATCH --ntasks=1   # number of processor cores (i.e. tasks)
-#SBATCH --cpus-per-task=1
-#SBATCH --mem-per-cpu=1G   # memory per CPU core
+#SBATCH --time=48:00:00   # walltime
 #SBATCH -J "benbio"   # job name
-#SBATCH --output=slurm/out-%x.%j.out
-#SBATCH --error=slurm/err-%x.%j.err
+#SBATCH --output=slurm/%x.%j.out
+#SBATCH --error=slurm/%x.%j.err
 
 module load python3/3.7.0
 module load gcc/9.2.0
