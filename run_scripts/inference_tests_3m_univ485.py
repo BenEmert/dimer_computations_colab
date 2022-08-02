@@ -23,14 +23,14 @@ from time import time
 
 parser0 = argparse.ArgumentParser()
 ## Run settings
-parser0.add_argument('--n_rounds', default=10, type=int)
+parser0.add_argument('--n_rounds', default=1, type=int)
 parser0.add_argument('--n_params_per_round', default=1, type=int)
-parser0.add_argument('--n_weights_per_round', default=1, type=int)
+parser0.add_argument('--n_weights_per_round', default=100, type=int)
 FLAGS_run, __ = parser0.parse_known_args()
 
 parser1 = argparse.ArgumentParser()
 ## Settings for TuneK
-parser1.add_argument('--base_dir', default='../results/true_inference_v2/a-outer_w-inner_K-known_1target_15x50_3x20', type=str) # base directory for output
+parser1.add_argument('--base_dir', default='../results/infer_485/a-outer_w-inner_allWeights', type=str) # base directory for output
 parser1.add_argument('--target_lib_name', default='SinCos', type=str) # Name for target library
 parser1.add_argument('--target_lib_file', default='../data/metaclusters/hc_3M_metaClusterBasis_thresh3.npy', type=str) # file for reading target functions
 parser1.add_argument('--m', default=3, type=int) #number of total monomers
@@ -55,7 +55,7 @@ tune_dict['opt_settings_outer'] = make_opt_settings(FLAGS_optsetts.__dict__)
 parser2 = argparse.ArgumentParser()
 parser2.add_argument('--maxiter_K', default=3, type=int)
 parser2.add_argument('--popsize_K', default=20, type=int)
-parser2.add_argument('--polish_K', default=0, type=int)
+parser2.add_argument('--polish_K', default=1, type=int)
 parser2.add_argument('--workers_K', default=1, type=int) # default is to use 1 worker (not paralleized). -1 uses all available workers!
 FLAGS_diffev, __ = parser2.parse_known_args()
 opt_setts_K = make_opt_settings(FLAGS_diffev.__dict__)
