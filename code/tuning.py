@@ -13,7 +13,7 @@ from scipy.optimize import minimize, brute, differential_evolution
 
 from pymoo.problems.functional import FunctionalProblem
 from pymoo.optimize import minimize
-from opt_utils import minimize_wrapper
+from opt_utils import *
 from pymoo.util.termination.default import SingleObjectiveDefaultTermination
 from pymoo.algorithms.soo.nonconvex.de import DE
 from pymoo.operators.sampling.lhs import LHS
@@ -60,11 +60,11 @@ class TuneK:
                     input_ub = 3,
                     acc_lb = -3,
                     acc_ub = 3,
-                    centered = True,
                     param_lb = -6,
                     param_ub = 6,
                     plot_inner_opt = True,
                     polish = False,
+                    lsq_linear_method = 'bvls',
                     **kwargs):
         """
         Run simulations for dimer networks of size m and input titration size t
@@ -91,8 +91,6 @@ class TuneK:
             Lower bounds for binding affinity parameters.
         param_ub : int. Default 6
             Upper bounds for binding affinity parameters.
-        centered : bool. Default True.
-            Indicates whether to center the draws from the latin-hypercube sampler
         base_dir : string. Default 'results'
             relative path for saving figure.
         target_lib_name : string. Default 'SinCos'
@@ -106,7 +104,6 @@ class TuneK:
         self.input_ub = input_ub
         self.acc_lb = acc_lb
         self.acc_ub = acc_ub
-        self.centered = centered
 
         self.param_lb = param_lb
         self.param_ub = param_ub
@@ -122,6 +119,7 @@ class TuneK:
         self.acc_opt = acc_opt
         self.w_opt = w_opt
         self.set_opts()
+        self.lsq_linear_method = lsq_linear_method
 
         self.make_output_dir()
 
@@ -233,7 +231,7 @@ class TuneK:
             plt.close()
 
 
-    def loss_k(self, K, n_starts=1, final_run=False, verbose=False, normalize_plot=False, plot_surface=False):
+    def loss_k(self, K, n_starts=1, final_run=False, verbose=False, normalize_plot=False, plot_surface=False, extra_nm='Final'):
         self.n_starts = n_starts
         output_list = self.outer_opt(K, verbose=verbose)
         c = -1
@@ -243,7 +241,7 @@ class TuneK:
                             final_run=final_run,
                             verbose=verbose,
                             normalize_plot=normalize_plot,
-                            output_dir=os.path.join(self.output_dir,'run_{}'.format(c)))
+                            output_dir=os.path.join(self.output_dir,'{}_run_{}'.format(extra_nm, c)))
 
         if plot_surface:
             a0_list = [d['c0_acc_best'] for d in output_list]
@@ -444,11 +442,14 @@ class TuneK:
             def inner_opt(c0_acc, K, j_target):
                 '''Compute the optimal weights for each target function given fixed K and accessorry concentrations'''
                 dimers = self.g1(c0_acc, K) # 40 x 9
-                theta_star_j, errs_j = scipy.optimize.nnls(dimers, self.f_targets[j_target]) # returns L2 errors (sqrt of sum of squares)
-                f_j_max = np.max(self.f_targets[j_target])
-                mse_j = errs_j**2 / self.n_input_samples / (f_j_max*82)
-                return theta_star_j, mse_j
+                # theta_star_j, errs_j = scipy.optimize.nnls(dimers, self.f_targets[j_target]) # returns L2 errors (sqrt of sum of squares)
+                # f_j_max = np.max(self.f_targets[j_target])
+                # mse_j = errs_j**2 / self.n_input_samples / (f_j_max**2)
+                foo = scipy.optimize.lsq_linear(dimers, self.f_targets[j_target], bounds=(0, np.Inf), method=self.lsq_linear_method)
+                theta_star_j = foo.x
+                mse_j = np.sum(foo.fun**2) / self.n_input_samples / np.max(self.f_targets[j_target])**2
 
+                return theta_star_j, mse_j
 
         elif self.acc_opt=='inner' and self.w_opt=='outer':
             # min_theta SUM_j min_(a_j) |F_j - G(k; a_j, theta)|
@@ -467,7 +468,7 @@ class TuneK:
                 dimers_all = np.vstack(dimers_all)
                 # theta_star, errs_all = scipy.optimize.nnls(dimers_all, targets_all) # returns L2 errors (sqrt of sum of squares)
                 # instead of NNLS, use lsq_linear because it returns pointwise residuals automatically, rather than just overall MSE.
-                foo = scipy.optimize.lsq_linear(dimers_all, targets_all, bounds=(0, np.Inf), method='bvls')
+                foo = scipy.optimize.lsq_linear(dimers_all, targets_all, bounds=(0, np.Inf), method=self.lsq_linear_method)
                 theta_star = foo.x
                 mse_total = np.sum(foo.fun**2) / self.n_input_samples / np.sum(np.max(self.f_targets, axis=1)**2)
 
@@ -528,10 +529,20 @@ class TuneK:
                 mse_total = 0
                 mse_list = [0 for j in range(self.n_targets)]
                 for j in range(self.n_targets):
-                    opt_j, errs_j = scipy.optimize.nnls(dimers, self.f_targets[j]) # returns L2 errors (sqrt of sum of squares)
-                    f_j_max = np.max(self.f_targets[j])
-                    theta_star[j] = opt_j
-                    mse_j = errs_j**2 / self.n_input_samples / (f_j_max**2)
+                    # foo = scipy.optimize.lsq_linear(dimers, self.f_targets[j], bounds=(0, np.Inf), method=self.lsq_linear_method)
+                    try:
+                        foo = scipy.optimize.lsq_linear(dimers, self.f_targets[j], bounds=(0, np.Inf), method=self.lsq_linear_method)
+                    except:
+                        print('Dimer Range:', np.min(dimers), np.max(dimers))
+                        print('Target Max:', np.min(self.f_targets[j]), np.max(self.f_targets[j]))
+                        print('BVLS tolerance not met. Switching to TRF solver.')
+                        foo = scipy.optimize.lsq_linear(dimers, self.f_targets[j], bounds=(0, np.Inf), method='trf'')
+                    theta_star[j] = foo.x
+                    mse_j = np.sum(foo.fun**2) / self.n_input_samples / np.max(self.f_targets[j])**2
+                    # opt_j, errs_j = scipy.optimize.nnls(dimers, self.f_targets[j]) # returns L2 errors (sqrt of sum of squares)
+                    # f_j_max = np.max(self.f_targets[j])
+                    # theta_star[j] = opt_j
+                    # mse_j = errs_j**2 / self.n_input_samples / (f_j_max**2)
                     mse_list[j] = mse_j
                     mse_total += mse_j # errs_j is l2 norm, so square it, then divide by N to get MSE
                 return theta_star, mse_total, mse_list
@@ -580,10 +591,12 @@ class TuneK:
 
         return
 
-    def g1(self, c0_acc, K, apply_power_K=True, apply_power_c0=True):
+    def g1(self, c0_acc, K, apply_power_K=True, apply_power_c0=True, eps=1e-8):
         # for 1d -> 1d predictions, we have each row of C0 being the same EXCEPT in its first column,
         # where we modulate the input monomor concentration over a pre-defined range.
         # Note: evaluation of g1 scales linearly with number of rows in C0...eqtk must treat each row of C0 independently.
+        '''eps: threshold below which the dimer value is set to 0. Avoids ill-conditioning of LSQ fits.'''
+
         if apply_power_K:
             K = np.float_power(10, K)
         if apply_power_c0:
@@ -594,6 +607,8 @@ class TuneK:
         sols = eqtk.solve(c0=C0, N=self.N, K=K)
 
         dimers = sols[:,self.m:]
+
+        dimers = thresh2eps(dimers, eps=eps)
 
         return dimers
 
