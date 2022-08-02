@@ -536,7 +536,7 @@ class TuneK:
                         print('Dimer Range:', np.min(dimers), np.max(dimers))
                         print('Target Max:', np.min(self.f_targets[j]), np.max(self.f_targets[j]))
                         print('BVLS tolerance not met. Switching to TRF solver.')
-                        foo = scipy.optimize.lsq_linear(dimers, self.f_targets[j], bounds=(0, np.Inf), method='trf'')
+                        foo = scipy.optimize.lsq_linear(dimers, self.f_targets[j], bounds=(0, np.Inf), method='trf')
                     theta_star[j] = foo.x
                     mse_j = np.sum(foo.fun**2) / self.n_input_samples / np.max(self.f_targets[j])**2
                     # opt_j, errs_j = scipy.optimize.nnls(dimers, self.f_targets[j]) # returns L2 errors (sqrt of sum of squares)
