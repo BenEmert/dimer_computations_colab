@@ -125,11 +125,13 @@ class TuneK:
 
         self.f_targets = set_target_library(n_input_samples=n_input_samples, target_lib_name=target_lib_name, target_lib_file=target_lib_file)
         self.n_targets = self.f_targets.shape[0]
+        self.f_targets_max_sq = np.max(self.f_targets, axis=1)**2
 
     def set_target(self, F):
         '''Overwrite existing targets'''
         self.f_targets = interp_target(self.n_input_samples, F)
         self.n_targets = self.f_targets.shape[0]
+        self.f_targets_max_sq = np.max(self.f_targets, axis=1)**2
 
     def mse(self, f_true, f_pred):
         '''Mean Squared Error'''
@@ -447,7 +449,7 @@ class TuneK:
                 # mse_j = errs_j**2 / self.n_input_samples / (f_j_max**2)
                 foo = scipy.optimize.lsq_linear(dimers, self.f_targets[j_target], bounds=(0, np.Inf), method=self.lsq_linear_method)
                 theta_star_j = foo.x
-                mse_j = np.sum(foo.fun**2) / self.n_input_samples / np.max(self.f_targets[j_target])**2
+                mse_j = np.sum(foo.fun**2) / self.n_input_samples / self.f_targets_max_sq[j_target]
 
                 return theta_star_j, mse_j
 
@@ -470,14 +472,14 @@ class TuneK:
                 # instead of NNLS, use lsq_linear because it returns pointwise residuals automatically, rather than just overall MSE.
                 foo = scipy.optimize.lsq_linear(dimers_all, targets_all, bounds=(0, np.Inf), method=self.lsq_linear_method)
                 theta_star = foo.x
-                mse_total = np.sum(foo.fun**2) / self.n_input_samples / np.sum(np.max(self.f_targets, axis=1)**2)
+                mse_total = np.sum(foo.fun**2) / self.n_input_samples / np.sum(self.f_targets_max_sq)
 
                 # compute listed MSEs
                 mse_list = [0 for j in range(self.n_targets)]
                 for j in range(self.n_targets):
                     i_low = j*(self.m-1)
                     i_high = i_low + (self.m-1)
-                    mse_list[j] = np.sum(foo.fun[i_low:i_high]**2) / self.n_input_samples / np.sum(np.max(self.f_targets[i_low:i_high], axis=1)**2)
+                    mse_list[j] = np.sum(foo.fun[i_low:i_high]**2) / self.n_input_samples / np.sum(self.f_targets_max_sq[i_low:i_high])
 
                 return theta_star, mse_total, mse_list
 
@@ -538,7 +540,7 @@ class TuneK:
                         print('BVLS tolerance not met. Switching to TRF solver.')
                         foo = scipy.optimize.lsq_linear(dimers, self.f_targets[j], bounds=(0, np.Inf), method='trf')
                     theta_star[j] = foo.x
-                    mse_j = np.sum(foo.fun**2) / self.n_input_samples / np.max(self.f_targets[j])**2
+                    mse_j = np.sum(foo.fun**2) / self.n_input_samples / self.f_targets_max_sq[j]
                     # opt_j, errs_j = scipy.optimize.nnls(dimers, self.f_targets[j]) # returns L2 errors (sqrt of sum of squares)
                     # f_j_max = np.max(self.f_targets[j])
                     # theta_star[j] = opt_j
