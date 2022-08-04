@@ -65,6 +65,7 @@ class TuneK:
                     plot_inner_opt = True,
                     polish = False,
                     lsq_linear_method = 'bvls',
+                    lsq_bounds = (0, np.Inf),
                     **kwargs):
         """
         Run simulations for dimer networks of size m and input titration size t
@@ -109,6 +110,8 @@ class TuneK:
         self.param_ub = param_ub
         self.opt_settings_outer = opt_settings_outer
         self.polish = polish
+
+        self.lsq_bounds = lsq_bounds #(0, np.Inf)
 
         self.plot_inner_opt = plot_inner_opt
 
@@ -447,7 +450,7 @@ class TuneK:
                 # theta_star_j, errs_j = scipy.optimize.nnls(dimers, self.f_targets[j_target]) # returns L2 errors (sqrt of sum of squares)
                 # f_j_max = np.max(self.f_targets[j_target])
                 # mse_j = errs_j**2 / self.n_input_samples / (f_j_max**2)
-                foo = scipy.optimize.lsq_linear(dimers, self.f_targets[j_target], bounds=(0, np.Inf), method=self.lsq_linear_method)
+                foo = scipy.optimize.lsq_linear(dimers, self.f_targets[j_target], bounds=self.lsq_bounds, method=self.lsq_linear_method)
                 theta_star_j = foo.x
                 mse_j = np.sum(foo.fun**2) / self.n_input_samples / self.f_targets_max_sq[j_target]
 
@@ -470,7 +473,7 @@ class TuneK:
                 dimers_all = np.vstack(dimers_all)
                 # theta_star, errs_all = scipy.optimize.nnls(dimers_all, targets_all) # returns L2 errors (sqrt of sum of squares)
                 # instead of NNLS, use lsq_linear because it returns pointwise residuals automatically, rather than just overall MSE.
-                foo = scipy.optimize.lsq_linear(dimers_all, targets_all, bounds=(0, np.Inf), method=self.lsq_linear_method)
+                foo = scipy.optimize.lsq_linear(dimers_all, targets_all, bounds=self.lsq_bounds, method=self.lsq_linear_method)
                 theta_star = foo.x
                 mse_total = np.sum(foo.fun**2) / self.n_input_samples / np.sum(self.f_targets_max_sq)
 
@@ -531,14 +534,14 @@ class TuneK:
                 mse_total = 0
                 mse_list = [0 for j in range(self.n_targets)]
                 for j in range(self.n_targets):
-                    # foo = scipy.optimize.lsq_linear(dimers, self.f_targets[j], bounds=(0, np.Inf), method=self.lsq_linear_method)
+                    # foo = scipy.optimize.lsq_linear(dimers, self.f_targets[j], bounds=self.lsq_bounds, method=self.lsq_linear_method)
                     try:
-                        foo = scipy.optimize.lsq_linear(dimers, self.f_targets[j], bounds=(0, np.Inf), method=self.lsq_linear_method)
+                        foo = scipy.optimize.lsq_linear(dimers, self.f_targets[j], bounds=self.lsq_bounds, method=self.lsq_linear_method)
                     except:
                         print('Dimer Range:', np.min(dimers), np.max(dimers))
                         print('Target Max:', np.min(self.f_targets[j]), np.max(self.f_targets[j]))
                         print('BVLS tolerance not met. Switching to TRF solver.')
-                        foo = scipy.optimize.lsq_linear(dimers, self.f_targets[j], bounds=(0, np.Inf), method='trf')
+                        foo = scipy.optimize.lsq_linear(dimers, self.f_targets[j], bounds=self.lsq_bounds, method='trf')
                     theta_star[j] = foo.x
                     mse_j = np.sum(foo.fun**2) / self.n_input_samples / self.f_targets_max_sq[j]
                     # opt_j, errs_j = scipy.optimize.nnls(dimers, self.f_targets[j]) # returns L2 errors (sqrt of sum of squares)

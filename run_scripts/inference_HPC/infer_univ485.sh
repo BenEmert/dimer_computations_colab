@@ -7,8 +7,8 @@
 #SBATCH --output=slurm/%x.%j.out
 #SBATCH --error=slurm/%x.%j.err
 
-module load python3/3.7.0
-module load gcc/9.2.0
+# module load python3/3.7.0
+# module load gcc/9.2.0
 
 round_dir="/groups/astuart/mlevine/dimer_computations_colab/results/true_inference"
 

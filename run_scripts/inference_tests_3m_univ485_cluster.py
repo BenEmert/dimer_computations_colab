@@ -24,12 +24,13 @@ from time import time
 parser0 = argparse.ArgumentParser()
 ## Run settings
 parser0.add_argument('--n_rounds', default=10, type=int)
-parser0.add_argument('--n_targets_per_round', default=10, type=int)
+parser0.add_argument('--n_params_per_round', default=1, type=int)
+parser0.add_argument('--n_weights_per_round', default=10, type=int)
 FLAGS_run, __ = parser0.parse_known_args()
 
 parser1 = argparse.ArgumentParser()
 ## Settings for TuneK
-parser1.add_argument('--base_dir', default='../results/infer_metaclusters/a-outer_w-inner', type=str) # base directory for output
+parser1.add_argument('--base_dir', default='../results/infer_485_clustered/a-outer_w-inner_knownK', type=str) # base directory for output
 parser1.add_argument('--target_lib_name', default='SinCos', type=str) # Name for target library
 parser1.add_argument('--target_lib_file', default='../data/metaclusters/hc_3M_metaClusterBasis_thresh3.npy', type=str) # file for reading target functions
 parser1.add_argument('--m', default=3, type=int) #number of total monomers
@@ -99,7 +100,7 @@ def do_opt(opt_setts, foo, K_true=[], seed=None):
     analyzeOpt.make_plots(foo.output_dir)
     return res
 
-def opt_wrapper(opt_setts, n_rounds=10, n_targets_per_round=50):
+def opt_wrapper(opt_setts, n_rounds=10, n_params_per_round=1, n_weights_per_round=100):
 
     datadir = '../data/sims_3m'
     clusterdir = '../data/metaclusters'
@@ -107,21 +108,47 @@ def opt_wrapper(opt_setts, n_rounds=10, n_targets_per_round=50):
     # read in relevant simulation files
     M = FLAGS_tune.m
 
+    # dimer curves: discretization X (# monomers and dimers) X (# parameters)
+    S = np.load(os.path.join(datadir, 'S_all_{}M_1000k.npy'.format(M)))
+
+    # weights: (# random weights) X (# dimers)
+    weights = np.load(os.path.join(datadir, 'out_weights_{}M_LHSsample_1000k.npy'.format(M))).T
+
+    # output: discretization X parameters (K,a0) X weights
+    output = np.load(os.path.join(datadir, 'output_{}M_LHSsample_1000k.npy'.format(M)))
+    output = np.moveaxis(output, (0,1,2), (2,0,1)) # parameters (K,a0) X weights X discretization
+
+    # load K, a0
+    params = np.load(os.path.join(datadir, 'param_sets_{}M_1000k.npy'.format(M)))
+    params = np.log10(params)
+    Ksim = params[:,:-(M-1)] # samples X K values
+    a0sim = params[:,-(M-1):] # samples X acc index
+
+    ip = 485
+    K = Ksim[ip] # binding affinity
+    a0 = np.squeeze(a0sim[ip]) # accessory monomer concentration
     # load meta-cluster instead of direct outputs
-    output = np.atleast_2d(np.load(os.path.join(clusterdir, 'hc_{}M_metaClusterBasis_thresh3.npy'.format(M))))
+    F = np.atleast_2d(np.load(os.path.join(clusterdir, 'hc_{}M_clusterBasis_univ485_thresh3.npy'.format(M))))
 
-    for c in range(n_rounds):
-        ind_F = np.random.randint(output.shape[0], size=n_targets_per_round)
-        F = output[ind_F]
+    FOO = TuneK(**tune_dict)
 
-        FOO = TuneK(**tune_dict)
-        FOO.lsq_bounds = (-np.Inf, np.Inf)
+    # set the target
+    FOO.set_target(F) #wipes other targets and focuses on this one (interpolates, then re-discretizes)
 
-        # set the target
-        FOO.set_target(F) #wipes other targets and focuses on this one (interpolates, then re-discretizes)
+    # set the TRUTH (only used for plotting!!!!)
+    FOO.truth = {'K': K, 'a0': a0}
 
-        # next, perform full optimization over K and a, theta
-        res = do_opt(opt_setts, FOO, seed=0)
+    # Evaluate inner convergence quality for true K
+    FOO.loss_k(K, n_starts=2, final_run=True, plot_surface=True, extra_nm='TrueK')
+    print('True values are...')
+    print('a0:',a0)
+
+    # BEN: try to find the true K for this cluster???
+    # Evaluate inner convergence quality for true K
+    # FOO.loss_k(K, n_starts=2, final_run=True, plot_surface=True)
+
+    # next, perform full optimization over K and a, theta
+    res = do_opt(opt_setts, FOO, seed=0)
 
     return
 
