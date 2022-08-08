@@ -121,7 +121,6 @@ class TuneK:
 
         self.acc_opt = acc_opt
         self.w_opt = w_opt
-        self.set_opts()
         self.lsq_linear_method = lsq_linear_method
 
         self.make_output_dir()
@@ -129,6 +128,8 @@ class TuneK:
         self.f_targets = set_target_library(n_input_samples=n_input_samples, target_lib_name=target_lib_name, target_lib_file=target_lib_file)
         self.n_targets = self.f_targets.shape[0]
         self.f_targets_max_sq = np.max(self.f_targets, axis=1)**2
+
+        self.set_opts()
 
     def set_target(self, F):
         '''Overwrite existing targets'''
@@ -238,7 +239,7 @@ class TuneK:
 
     def loss_k(self, K, n_starts=1, final_run=False, verbose=False, normalize_plot=False, plot_surface=False, extra_nm='Final'):
         self.n_starts = n_starts
-        output_list = self.outer_opt(K, verbose=verbose)
+        output_list = self.outer_opt(K, verbose=verbose, make_plots=self.plot_inner_opt)
         c = -1
         for info_dict in output_list:
             c += 1
@@ -402,24 +403,24 @@ class TuneK:
                             n_max_gen=self.opt_settings_outer['maxiter'])
 
         if self.acc_opt=='outer':
-            n_var = self.m-1
+            self.n_var = self.m-1
         elif self.acc_opt=='inner':
-            n_var = self.n_targets * (self.m-1)
+            self.n_var = self.n_targets * (self.m-1)
 
         self.algorithm = DE(CR=0.9,
-            pop_size=self.opt_settings_outer['popsize']*n_var)
+            pop_size=self.opt_settings_outer['popsize']*self.n_var)
 
 
         if self.acc_opt=='inner' and self.w_opt=='inner':
             # SUM_j min_(a_j, theta_j) |F_j - G(k; a_j, theta_j)|
-            def outer_opt(K, verbose=True):
+            def outer_opt(K, verbose=True, make_plots=True):
                 theta_star = np.zeros((self.n_targets, self.n_dimers))
                 c0_acc_star = np.zeros((self.n_targets, self.m-1))
                 mse_total = 0
                 mse_list = [0 for j in range(self.n_targets)]
                 for j in range(self.n_targets):
                     problem = FunctionalProblem(
-                        n_var=n_var,
+                        n_var=self.n_var,
                         objs=lambda x: self.inner_opt(x, K, j)[1],
                         xl=self.acc_lb_list,
                         xu=self.acc_ub_list)
@@ -433,6 +434,7 @@ class TuneK:
                         polish=self.polish,
                         verbose=verbose,
                         truth=self.truth['a0'],
+                        plot_analyses=make_plots,
                         plot_dirname=os.path.join(self.output_dir,'inner_opt'))
 
                     c0_acc_star_j = opt.X
@@ -480,17 +482,17 @@ class TuneK:
                 # compute listed MSEs
                 mse_list = [0 for j in range(self.n_targets)]
                 for j in range(self.n_targets):
-                    i_low = j*(self.m-1)
-                    i_high = i_low + (self.m-1)
-                    mse_list[j] = np.sum(foo.fun[i_low:i_high]**2) / self.n_input_samples / np.sum(self.f_targets_max_sq[i_low:i_high])
+                    i_low = j*(self.n_input_samples)
+                    i_high = i_low + self.n_input_samples
+                    mse_list[j] = np.sum(foo.fun[i_low:i_high]**2) / self.n_input_samples / self.f_targets_max_sq[j]
 
                 return theta_star, mse_total, mse_list
 
-            def outer_opt(K, verbose=True):
+            def outer_opt(K, verbose=True, make_plots=True):
                 '''Optimize accessory concentrations for the fixed K.'''
 
                 problem = FunctionalProblem(
-                    n_var=n_var,
+                    n_var=self.n_var,
                     objs=lambda x: self.inner_opt(x, K)[1],
                     xl=[self.acc_lb]*(self.m-1)*self.n_targets,
                     xu=[self.acc_ub]*(self.m-1)*self.n_targets)
@@ -504,6 +506,7 @@ class TuneK:
                     polish=self.polish,
                     verbose=verbose,
                     truth=self.truth['a0'],
+                    plot_analyses=make_plots,
                     plot_dirname=os.path.join(self.output_dir,'inner_opt'))
 
                 # opt = differential_evolution(lambda x: self.inner_opt(x, K)[1],
@@ -552,11 +555,11 @@ class TuneK:
                     mse_total += mse_j # errs_j is l2 norm, so square it, then divide by N to get MSE
                 return theta_star, mse_total, mse_list
 
-            def outer_opt(K, verbose=True):
+            def outer_opt(K, verbose=True, make_plots=True):
                 '''Optimize accessory concentrations for the fixed K.'''
 
                 problem = FunctionalProblem(
-                    n_var=n_var,
+                    n_var=self.n_var,
                     objs=lambda x: self.inner_opt(x, K)[1],
                     xl=self.acc_lb_list,
                     xu=self.acc_ub_list)
@@ -570,6 +573,7 @@ class TuneK:
                     polish=self.polish,
                     verbose=verbose,
                     truth=self.truth['a0'],
+                    plot_analyses=make_plots,
                     plot_dirname=os.path.join(self.output_dir,'inner_opt'))
 
                 output_list = []
