@@ -126,18 +126,26 @@ class AnalyzePymoo:
 
 
     def compare_params(self, plotdir, nm='a0'):
-        fig, axs = plt.subplots(nrows=1, ncols=self.n_params, figsize = [self.n_params*10,8])
+
+        N_plot_params = min(10, self.n_params)
+        if N_plot_params == self.n_params:
+            param_inds = np.arange(N_plot_params)
+        else:
+            param_inds = np.random.choice(np.arange(self.n_params), size=N_plot_params, replace=False)
+        fig, axs = plt.subplots(nrows=1, ncols=N_plot_params, figsize = [N_plot_params*10,8])
         plt.subplots_adjust(left=None, bottom=None, right=None, top=None, wspace=0.6, hspace=0.6)
 
         for n in range(len(self.opt_list)):
-            for c in range(self.X.shape[-1]):
-                axs[c].plot(self.n_evals, self.X[n,:,c], label='Run {}'.format(n))
-                axs[c].set_title("Parameter {}".format(c))
+            for c in range(N_plot_params):
+                j = param_inds[c]
+                axs[c].plot(self.n_evals, self.X[n,:,j], label='Run {}'.format(n))
+                axs[c].set_title("Parameter {}".format(j))
                 axs[c].set_xlabel("Iters")
 
-        for c in range(self.X.shape[-1]):
+        for c in range(N_plot_params):
+            j = param_inds[c]
             if len(self.truth):
-                axs[c].axhline(y=self.truth[c], color='black', linestyle='--', label='True')
+                axs[c].axhline(y=self.truth[j], color='black', linestyle='--', label='True')
             axs[c].legend()
 
         # axs.set_title("Convergence")
