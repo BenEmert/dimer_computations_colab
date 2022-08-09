@@ -12,7 +12,7 @@
 # module load python3/3.7.0
 # module load gcc/9.2.0
 
-round_dir="/groups/astuart/mlevine/dimer_computations_colab/results/bumps"
+round_dir="/groups/astuart/mlevine/dimer_computations_colab/results/bumps_eps1e-16"
 
 echo "Sending results to $round_dir"
 srun --ntasks=1 python3 bump_inference_tests_ainner.py --bump_center 0.8 --bump_width 2 --maxiter_O 10 --popsize_O 3 --maxiter_K 10 --popsize_K 25 --base_dir "$round_dir/center0.8_width2/inner10x3_outer10x25" &
