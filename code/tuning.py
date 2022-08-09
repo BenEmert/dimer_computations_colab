@@ -66,6 +66,7 @@ class TuneK:
                     polish = False,
                     lsq_linear_method = 'bvls',
                     lsq_bounds = (0, np.Inf),
+                    dimer_eps=1e-16,
                     **kwargs):
         """
         Run simulations for dimer networks of size m and input titration size t
@@ -110,6 +111,8 @@ class TuneK:
         self.param_ub = param_ub
         self.opt_settings_outer = opt_settings_outer
         self.polish = polish
+
+        self.dimer_eps = dimer_eps # threshold below which to set to 0 for equilibrium levels.
 
         self.lsq_bounds = lsq_bounds #(0, np.Inf)
 
@@ -274,7 +277,12 @@ class TuneK:
                 dimer_inds = np.random.choice(np.arange(self.n_dimers), size=N_plot_dimers, replace=False)
 
             N_plot_targets = min(10, self.n_targets)
-            fig, axs = plt.subplots(nrows=3, ncols=N_plot_targets, figsize = [N_plot_targets*10,20], squeeze=False)
+            if N_plot_targets>1:
+                fig, axs = plt.subplots(nrows=3, ncols=N_plot_targets, figsize = [N_plot_targets*10,20], squeeze=False)
+            else:
+                fig, axs = plt.subplots(nrows=N_plot_targets, ncols=3, figsize = [30, 10], squeeze=False)
+                axs = axs.T
+
             plt.subplots_adjust(left=None, bottom=None, right=None, top=None, wspace=0.4, hspace=0.4)
             if N_plot_targets == self.n_targets:
                 target_inds = np.arange(N_plot_targets)
@@ -600,11 +608,10 @@ class TuneK:
 
         return
 
-    def g1(self, c0_acc, K, apply_power_K=True, apply_power_c0=True, eps=1e-8):
+    def g1(self, c0_acc, K, apply_power_K=True, apply_power_c0=True):
         # for 1d -> 1d predictions, we have each row of C0 being the same EXCEPT in its first column,
         # where we modulate the input monomor concentration over a pre-defined range.
         # Note: evaluation of g1 scales linearly with number of rows in C0...eqtk must treat each row of C0 independently.
-        '''eps: threshold below which the dimer value is set to 0. Avoids ill-conditioning of LSQ fits.'''
 
         if apply_power_K:
             K = np.float_power(10, K)
@@ -617,7 +624,7 @@ class TuneK:
 
         dimers = sols[:,self.m:]
 
-        dimers = thresh2eps(dimers, eps=eps)
+        dimers = thresh2eps(dimers, eps=self.dimer_eps)
 
         return dimers
 
