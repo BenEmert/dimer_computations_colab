@@ -400,6 +400,175 @@ class TuneK:
 
         return mse_best
 
+    def inner_opt(self, c0_acc, K, j_target=None):
+        '''This function computes optimal linear weights and the associated errors incurred for these optimal weights.'''
+        if self.acc_opt=='inner' and self.w_opt=='inner':
+            dimers = self.g1(c0_acc, K) # 40 x 9
+            foo = scipy.optimize.lsq_linear(dimers, self.f_targets[j_target], bounds=self.lsq_bounds, method=self.lsq_linear_method)
+            theta_star_j = foo.x
+            mse_j = np.sum(foo.fun**2) / self.n_input_samples / self.f_targets_max_sq[j_target]
+            return theta_star_j, mse_j
+        elif self.acc_opt=='inner' and self.w_opt=='outer':
+            dimers_all = []
+            for j in range(self.n_targets):
+                i_low = j*(self.m-1)
+                i_high = i_low + (self.m-1)
+                dimers_j = self.g1(c0_acc[i_low:i_high], K) # 40 x 9
+                dimers_all += [dimers_j]
+            targets_all = self.f_targets.reshape(-1) #(40*n,)
+            dimers_all = np.vstack(dimers_all)
+            foo = scipy.optimize.lsq_linear(dimers_all, targets_all, bounds=self.lsq_bounds, method=self.lsq_linear_method)
+            theta_star = foo.x
+            mse_total = np.sum(foo.fun**2) / self.n_input_samples / np.sum(self.f_targets_max_sq)
+
+            # compute listed MSEs
+            mse_list = [0 for j in range(self.n_targets)]
+            for j in range(self.n_targets):
+                i_low = j*(self.n_input_samples)
+                i_high = i_low + self.n_input_samples
+                mse_list[j] = np.sum(foo.fun[i_low:i_high]**2) / self.n_input_samples / self.f_targets_max_sq[j]
+            return theta_star, mse_total, mse_list
+        elif self.acc_opt=='outer' and self.w_opt=='inner':
+            dimers = self.g1(c0_acc, K) # 40 x 9
+            theta_star = np.zeros((self.n_targets, dimers.shape[1]))
+            mse_total = 0
+            mse_list = [0 for j in range(self.n_targets)]
+            for j in range(self.n_targets):
+                try:
+                    foo = scipy.optimize.lsq_linear(dimers, self.f_targets[j], bounds=self.lsq_bounds, method=self.lsq_linear_method)
+                except:
+                    print('BVLS tolerance not met. Switching to TRF solver.')
+                    foo = scipy.optimize.lsq_linear(dimers, self.f_targets[j], bounds=self.lsq_bounds, method='trf')
+                theta_star[j] = foo.x
+                mse_j = np.sum(foo.fun**2) / self.n_input_samples / self.f_targets_max_sq[j]
+                mse_list[j] = mse_j
+                mse_total += mse_j # errs_j is l2 norm, so square it, then divide by N to get MSE
+            return theta_star, mse_total, mse_list
+        else:
+            pass
+
+    def set_inner_problems(self, K):
+        self.inner_problem_list = []
+        if self.acc_opt=='inner' and self.w_opt=='inner':
+            for j in range(self.n_targets):
+                problem = FunctionalProblem(
+                    n_var=self.n_var,
+                    objs=lambda x: self.inner_opt(x, K, j)[1],
+                    xl=self.acc_lb_list,
+                    xu=self.acc_ub_list)
+                self.inner_problem_list.append(problem)
+
+        elif self.acc_opt=='inner' and self.w_opt=='outer':
+            problem = FunctionalProblem(
+                n_var=self.n_var,
+                objs=lambda x: self.inner_opt(x, K)[1],
+                xl=[self.acc_lb]*(self.m-1)*self.n_targets,
+                xu=[self.acc_ub]*(self.m-1)*self.n_targets)
+            self.inner_problem_list.append(problem)
+
+        elif self.acc_opt=='outer' and self.w_opt=='inner':
+            problem = FunctionalProblem(
+                n_var=self.n_var,
+                objs=lambda x: self.inner_opt(x, K)[1],
+                xl=self.acc_lb_list,
+                xu=self.acc_ub_list)
+            self.inner_problem_list.append(problem)
+        else:
+            pass
+
+    def f_min_outer(self, problem, truth, plot_dirname, verbose=True, make_plots=True):
+        opt_list = minimize_wrapper(
+            problem,
+            self.algorithm,
+            self.termination,
+            n_starts=self.n_starts,
+            save_history=True,
+            polish=self.polish,
+            verbose=verbose,
+            truth=truth,
+            plot_analyses=make_plots,
+            plot_dirname=plot_dirname)
+        return opt_list
+
+    def outer_opt(self, K, verbose=True, make_plots=True):
+        self.set_inner_problems(K)
+        if self.acc_opt=='inner' and self.w_opt=='inner':
+            opt_list = []
+            for j in range(self.n_targets):
+                try:
+                    truth = self.truth['a0'][j]
+                except:
+                    truth = self.truth['a0']
+                problem = self.inner_problem_list[j]
+                opt_list_j = self.f_min_outer(problem, truth=truth, plot_dirname=os.path.join(self.output_dir,'inner_opt_j{}'.format(j)), verbose=verbose, make_plots=make_plots)
+                opt_list.append(opt_list_j)
+            output_list = self.make_opt_output_list(opt_list, K)
+        elif self.acc_opt=='inner' and self.w_opt=='outer':
+            problem = self.inner_problem_list[0]
+            opt_list = self.f_min_outer(problem, truth=self.truth['a0'], plot_dirname=os.path.join(self.output_dir,'inner_opt'), verbose=verbose, make_plots=make_plots)
+            output_list = self.make_opt_output_list(opt_list, K)
+        elif self.acc_opt=='outer' and self.w_opt=='inner':
+            problem = self.inner_problem_list[0]
+            opt_list = self.f_min_outer(problem, truth=self.truth['a0'], plot_dirname=os.path.join(self.output_dir,'inner_opt'), verbose=verbose, make_plots=make_plots)
+            output_list = self.make_opt_output_list(opt_list, K)
+        else:
+            pass
+        return output_list
+
+    def make_opt_output_list(self, opt_list, K):
+        output_list = []
+        if self.acc_opt=='inner' and self.w_opt=='inner':
+            output_list = []
+            n_opts = len(opt_list[0])
+            for n in range(n_opts):
+                mse_best = 0
+                mse_list_best = []
+                c0_acc_best = np.zeros((self.n_targets, self.m-1))
+                theta_best = np.zeros((self.n_targets, self.n_dimers))
+                for j in range(self.n_targets):
+                    opt = opt_list[j][n]
+                    c0_acc_best_j = opt.X
+                    # rerun the best run to get more details
+                    theta_best_j, mse_best_j = self.inner_opt(c0_acc_best_j, K, j)
+                    mse_list_best.append(mse_best_j)
+                    mse_best += mse_best_j
+                    c0_acc_best[n,:] = c0_acc_best_j
+                    theta_best[n,:] = theta_best_j
+
+                info_dict = {'mse_best': mse_best/self.n_targets,
+                            'mse_list_best': mse_list_best,
+                             'c0_acc_best': c0_acc_best,
+                             'theta_best': theta_best}
+                output_list.append(info_dict)
+        elif self.acc_opt=='inner' and self.w_opt=='outer':
+            for opt in opt_list:
+                c0_acc_best = opt.X
+                # rerun the best run to get more details
+                theta_best, mse_total_best, mse_list_best = self.inner_opt(c0_acc_best, K)
+                # convert c0_acc_best to a shaped array
+                c0_acc_best = c0_acc_best.reshape(self.n_targets,-1)
+
+                info_dict = {'mse_best': mse_total_best,
+                             'mse_list_best': mse_list_best,
+                             'c0_acc_best': c0_acc_best,
+                             'theta_best': theta_best}
+                output_list.append(info_dict)
+        elif self.acc_opt=='outer' and self.w_opt=='inner':
+            for opt in opt_list:
+                c0_acc_best = opt.X
+                # rerun the best run to get more details
+                theta_best, mse_total_best, mse_list_best = self.inner_opt(c0_acc_best, K)
+                info_dict = {'mse_best': mse_total_best,
+                             'mse_list_best': mse_list_best,
+                             'c0_acc_best': c0_acc_best,
+                             'theta_best': theta_best}
+                output_list.append(info_dict)
+        else:
+            pass
+
+        return output_list
+
+
     def set_opts(self):
 
         self.termination = SingleObjectiveDefaultTermination(
@@ -410,203 +579,13 @@ class TuneK:
                             n_last=20,
                             n_max_gen=self.opt_settings_outer['maxiter'])
 
-        if self.acc_opt=='outer':
-            self.n_var = self.m-1
-        elif self.acc_opt=='inner':
+        if self.acc_opt=='inner' and self.w_opt=='outer':
             self.n_var = self.n_targets * (self.m-1)
+        else:
+            self.n_var = self.m-1
 
         self.algorithm = DE(CR=0.9,
             pop_size=self.opt_settings_outer['popsize']*self.n_var)
-
-
-        if self.acc_opt=='inner' and self.w_opt=='inner':
-            # SUM_j min_(a_j, theta_j) |F_j - G(k; a_j, theta_j)|
-            def outer_opt(K, verbose=True, make_plots=True):
-                theta_star = np.zeros((self.n_targets, self.n_dimers))
-                c0_acc_star = np.zeros((self.n_targets, self.m-1))
-                mse_total = 0
-                mse_list = [0 for j in range(self.n_targets)]
-                for j in range(self.n_targets):
-                    problem = FunctionalProblem(
-                        n_var=self.n_var,
-                        objs=lambda x: self.inner_opt(x, K, j)[1],
-                        xl=self.acc_lb_list,
-                        xu=self.acc_ub_list)
-
-                    opt = minimize_wrapper(
-                        problem,
-                        self.algorithm,
-                        self.termination,
-                        n_starts=self.n_starts,
-                        save_history=True,
-                        polish=self.polish,
-                        verbose=verbose,
-                        truth=self.truth['a0'],
-                        plot_analyses=make_plots,
-                        plot_dirname=os.path.join(self.output_dir,'inner_opt'))
-
-                    c0_acc_star_j = opt.X
-                    c0_acc_star[j] = c0_acc_star_j
-                    # rerun the best run to get more details
-                    theta_star_j, mse_j = self.inner_opt(c0_acc_star_j, K, j)
-                    theta_star[j] = theta_star_j
-                    mse_list[j] = mse_j
-                    mse_total += mse_j
-                return mse_total, mse_list, c0_acc_star, theta_star
-
-            def inner_opt(c0_acc, K, j_target):
-                '''Compute the optimal weights for each target function given fixed K and accessorry concentrations'''
-                dimers = self.g1(c0_acc, K) # 40 x 9
-                # theta_star_j, errs_j = scipy.optimize.nnls(dimers, self.f_targets[j_target]) # returns L2 errors (sqrt of sum of squares)
-                # f_j_max = np.max(self.f_targets[j_target])
-                # mse_j = errs_j**2 / self.n_input_samples / (f_j_max**2)
-                foo = scipy.optimize.lsq_linear(dimers, self.f_targets[j_target], bounds=self.lsq_bounds, method=self.lsq_linear_method)
-                theta_star_j = foo.x
-                mse_j = np.sum(foo.fun**2) / self.n_input_samples / self.f_targets_max_sq[j_target]
-
-                return theta_star_j, mse_j
-
-        elif self.acc_opt=='inner' and self.w_opt=='outer':
-            # min_theta SUM_j min_(a_j) |F_j - G(k; a_j, theta)|
-            ## or, equivalently ##
-            # min_A SUM_j |F_j - G(k; A_j, theta(A))|
-            def inner_opt(c0_acc_list, K):
-                '''Compute the optimal weights for across all target functions given fixed K and per-target accessorry concentrations'''
-                dimers_all = []
-                for j in range(self.n_targets):
-                    i_low = j*(self.m-1)
-                    i_high = i_low + (self.m-1)
-                    dimers_j = self.g1(c0_acc_list[i_low:i_high], K) # 40 x 9
-                    dimers_all += [dimers_j]
-
-                targets_all = self.f_targets.reshape(-1) #(40*n,)
-                dimers_all = np.vstack(dimers_all)
-                # theta_star, errs_all = scipy.optimize.nnls(dimers_all, targets_all) # returns L2 errors (sqrt of sum of squares)
-                # instead of NNLS, use lsq_linear because it returns pointwise residuals automatically, rather than just overall MSE.
-                foo = scipy.optimize.lsq_linear(dimers_all, targets_all, bounds=self.lsq_bounds, method=self.lsq_linear_method)
-                theta_star = foo.x
-                mse_total = np.sum(foo.fun**2) / self.n_input_samples / np.sum(self.f_targets_max_sq)
-
-                # compute listed MSEs
-                mse_list = [0 for j in range(self.n_targets)]
-                for j in range(self.n_targets):
-                    i_low = j*(self.n_input_samples)
-                    i_high = i_low + self.n_input_samples
-                    mse_list[j] = np.sum(foo.fun[i_low:i_high]**2) / self.n_input_samples / self.f_targets_max_sq[j]
-
-                return theta_star, mse_total, mse_list
-
-            def outer_opt(K, verbose=True, make_plots=True):
-                '''Optimize accessory concentrations for the fixed K.'''
-
-                problem = FunctionalProblem(
-                    n_var=self.n_var,
-                    objs=lambda x: self.inner_opt(x, K)[1],
-                    xl=[self.acc_lb]*(self.m-1)*self.n_targets,
-                    xu=[self.acc_ub]*(self.m-1)*self.n_targets)
-
-                opt_list = minimize_wrapper(
-                    problem,
-                    self.algorithm,
-                    self.termination,
-                    n_starts=self.n_starts,
-                    save_history=True,
-                    polish=self.polish,
-                    verbose=verbose,
-                    truth=self.truth['a0'],
-                    plot_analyses=make_plots,
-                    plot_dirname=os.path.join(self.output_dir,'inner_opt'))
-
-                # opt = differential_evolution(lambda x: self.inner_opt(x, K)[1],
-                #         bounds = np.vstack(([self.acc_lb]*(self.m-1)*self.n_targets, [self.acc_ub]*(self.m-1)*self.n_targets)).T,
-                #         **self.opt_settings_outer)
-                output_list = []
-                for opt in opt_list:
-                    c0_acc_best = opt.X
-                    # rerun the best run to get more details
-                    theta_best, mse_total_best, mse_list_best = self.inner_opt(c0_acc_best, K)
-                    # convert c0_acc_best to a shaped array
-                    c0_acc_best = c0_acc_best.reshape(self.n_targets,-1)
-
-                    info_dict = {'mse_best': mse_total_best,
-                                 'mse_list_best': mse_list_best,
-                                 'c0_acc_best': c0_acc_best,
-                                 'theta_best': theta_best}
-                    output_list.append(info_dict)
-                return output_list
-
-        elif self.acc_opt=='outer' and self.w_opt=='inner':
-            # min_a SUM_j min_(theta_j) |F_j - G(k; a, theta_j)|
-            # perhaps simplest computationally?
-            def inner_opt(c0_acc, K):
-                '''Compute the optimal weights for each target function given fixed K and accessorry concentrations'''
-                dimers = self.g1(c0_acc, K) # 40 x 9
-                theta_star = np.zeros((self.n_targets, dimers.shape[1]))
-                mse_total = 0
-                mse_list = [0 for j in range(self.n_targets)]
-                for j in range(self.n_targets):
-                    # foo = scipy.optimize.lsq_linear(dimers, self.f_targets[j], bounds=self.lsq_bounds, method=self.lsq_linear_method)
-                    try:
-                        foo = scipy.optimize.lsq_linear(dimers, self.f_targets[j], bounds=self.lsq_bounds, method=self.lsq_linear_method)
-                    except:
-                        print('Dimer Range:', np.min(dimers), np.max(dimers))
-                        print('Target Max:', np.min(self.f_targets[j]), np.max(self.f_targets[j]))
-                        print('BVLS tolerance not met. Switching to TRF solver.')
-                        foo = scipy.optimize.lsq_linear(dimers, self.f_targets[j], bounds=self.lsq_bounds, method='trf')
-                    theta_star[j] = foo.x
-                    mse_j = np.sum(foo.fun**2) / self.n_input_samples / self.f_targets_max_sq[j]
-                    # opt_j, errs_j = scipy.optimize.nnls(dimers, self.f_targets[j]) # returns L2 errors (sqrt of sum of squares)
-                    # f_j_max = np.max(self.f_targets[j])
-                    # theta_star[j] = opt_j
-                    # mse_j = errs_j**2 / self.n_input_samples / (f_j_max**2)
-                    mse_list[j] = mse_j
-                    mse_total += mse_j # errs_j is l2 norm, so square it, then divide by N to get MSE
-                return theta_star, mse_total, mse_list
-
-            def outer_opt(K, verbose=True, make_plots=True):
-                '''Optimize accessory concentrations for the fixed K.'''
-
-                problem = FunctionalProblem(
-                    n_var=self.n_var,
-                    objs=lambda x: self.inner_opt(x, K)[1],
-                    xl=self.acc_lb_list,
-                    xu=self.acc_ub_list)
-
-                opt_list = minimize_wrapper(
-                    problem,
-                    self.algorithm,
-                    self.termination,
-                    n_starts=self.n_starts,
-                    save_history=True,
-                    polish=self.polish,
-                    verbose=verbose,
-                    truth=self.truth['a0'],
-                    plot_analyses=make_plots,
-                    plot_dirname=os.path.join(self.output_dir,'inner_opt'))
-
-                output_list = []
-                for opt in opt_list:
-                    c0_acc_best = opt.X
-                    # rerun the best run to get more details
-                    theta_best, mse_total_best, mse_list_best = self.inner_opt(c0_acc_best, K)
-                    info_dict = {'mse_best': mse_total_best,
-                                 'mse_list_best': mse_list_best,
-                                 'c0_acc_best': c0_acc_best,
-                                 'theta_best': theta_best}
-                    output_list.append(info_dict)
-                return output_list
-
-        elif self.acc_opt=='outer' and self.w_opt=='outer':
-            # min_(a, theta) SUM_j  |F_j - G(k; a, theta)|
-            raise('Cannot do an outer-optimization for both accessories and weights. Quitting.')
-        else:
-            raise('Inner/Outer optimizations not correctly specified.')
-
-        # allocate
-        self.inner_opt = inner_opt
-        self.outer_opt = outer_opt
-
-        return
 
     def g1(self, c0_acc, K, apply_power_K=True, apply_power_c0=True):
         # for 1d -> 1d predictions, we have each row of C0 being the same EXCEPT in its first column,
