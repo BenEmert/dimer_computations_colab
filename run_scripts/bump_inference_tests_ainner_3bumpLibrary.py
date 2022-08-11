@@ -16,7 +16,7 @@ from pymoo.optimize import minimize
 from pymoo.util.termination.default import SingleObjectiveDefaultTermination
 from pymoo.algorithms.soo.nonconvex.de import DE
 from pymoo.operators.sampling.lhs import LHS
-from tuning2 import TuneK
+from tuning import TuneK
 from pdb import set_trace as bp
 import argparse
 from time import time
