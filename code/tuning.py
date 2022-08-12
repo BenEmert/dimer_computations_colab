@@ -400,14 +400,17 @@ class TuneK:
 
         return mse_best
 
-    def inner_opt(self, c0_acc, K, j_target=None):
+    def inner_opt(self, c0_acc, K, j_target=None, error_only=False):
         '''This function computes optimal linear weights and the associated errors incurred for these optimal weights.'''
         if self.acc_opt=='inner' and self.w_opt=='inner':
             dimers = self.g1(c0_acc, K) # 40 x 9
             foo = scipy.optimize.lsq_linear(dimers, self.f_targets[j_target], bounds=self.lsq_bounds, method=self.lsq_linear_method)
             theta_star_j = foo.x
             mse_j = np.sum(foo.fun**2) / self.n_input_samples / self.f_targets_max_sq[j_target]
-            return theta_star_j, mse_j
+            if error_only:
+                return mse_j
+            else:
+                return theta_star_j, mse_j
         elif self.acc_opt=='inner' and self.w_opt=='outer':
             dimers_all = []
             for j in range(self.n_targets):
@@ -427,7 +430,10 @@ class TuneK:
                 i_low = j*(self.n_input_samples)
                 i_high = i_low + self.n_input_samples
                 mse_list[j] = np.sum(foo.fun[i_low:i_high]**2) / self.n_input_samples / self.f_targets_max_sq[j]
-            return theta_star, mse_total, mse_list
+            if error_only:
+                return mse_total
+            else:
+                return theta_star, mse_total, mse_list
         elif self.acc_opt=='outer' and self.w_opt=='inner':
             dimers = self.g1(c0_acc, K) # 40 x 9
             theta_star = np.zeros((self.n_targets, dimers.shape[1]))
@@ -443,33 +449,39 @@ class TuneK:
                 mse_j = np.sum(foo.fun**2) / self.n_input_samples / self.f_targets_max_sq[j]
                 mse_list[j] = mse_j
                 mse_total += mse_j # errs_j is l2 norm, so square it, then divide by N to get MSE
-            return theta_star, mse_total, mse_list
+            if error_only:
+                return mse_total
+            else:
+                return theta_star, mse_total, mse_list
         else:
             pass
 
     def set_inner_problems(self, K):
         self.inner_problem_list = []
         if self.acc_opt=='inner' and self.w_opt=='inner':
-            for j in range(self.n_targets):
+            for j_target in range(self.n_targets):
+                f_obj = functools.partial(self.inner_opt, K=K, j_target=j_target, error_only=True)
                 problem = FunctionalProblem(
                     n_var=self.n_var,
-                    objs=lambda x: self.inner_opt(x, K, j)[1],
+                    objs=f_obj,
                     xl=self.acc_lb_list,
                     xu=self.acc_ub_list)
                 self.inner_problem_list.append(problem)
 
         elif self.acc_opt=='inner' and self.w_opt=='outer':
+            f_obj = functools.partial(self.inner_opt, K=K, error_only=True)
             problem = FunctionalProblem(
                 n_var=self.n_var,
-                objs=lambda x: self.inner_opt(x, K)[1],
+                objs=f_obj,
                 xl=[self.acc_lb]*(self.m-1)*self.n_targets,
                 xu=[self.acc_ub]*(self.m-1)*self.n_targets)
             self.inner_problem_list.append(problem)
 
         elif self.acc_opt=='outer' and self.w_opt=='inner':
+            f_obj = functools.partial(self.inner_opt, K=K, error_only=True)
             problem = FunctionalProblem(
                 n_var=self.n_var,
-                objs=lambda x: self.inner_opt(x, K)[1],
+                objs=f_obj,
                 xl=self.acc_lb_list,
                 xu=self.acc_ub_list)
             self.inner_problem_list.append(problem)
@@ -518,7 +530,6 @@ class TuneK:
     def make_opt_output_list(self, opt_list, K):
         output_list = []
         if self.acc_opt=='inner' and self.w_opt=='inner':
-            output_list = []
             n_opts = len(opt_list[0])
             for n in range(n_opts):
                 mse_best = 0
@@ -532,8 +543,8 @@ class TuneK:
                     theta_best_j, mse_best_j = self.inner_opt(c0_acc_best_j, K, j)
                     mse_list_best.append(mse_best_j)
                     mse_best += mse_best_j
-                    c0_acc_best[n,:] = c0_acc_best_j
-                    theta_best[n,:] = theta_best_j
+                    c0_acc_best[j,:] = c0_acc_best_j
+                    theta_best[j,:] = theta_best_j
 
                 info_dict = {'mse_best': mse_best/self.n_targets,
                             'mse_list_best': mse_list_best,
