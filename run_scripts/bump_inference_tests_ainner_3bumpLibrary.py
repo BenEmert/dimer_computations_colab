@@ -40,7 +40,7 @@ parser1.add_argument('--acc_opt', default="inner", type=str)
 parser1.add_argument('--w_opt', default="inner", type=str)
 parser1.add_argument('--polish', default=0, type=int)
 parser1.add_argument('--lsq_linear_method', default='bvls', type=str)
-parser1.add_argument('--plot_inner_opt', default=1, type=int)
+parser1.add_argument('--plot_inner_opt', default=0, type=int)
 FLAGS_tune, __ = parser1.parse_known_args()
 
 # Settings for Differential Evolution optimizer within TuneK (i.e. for a single call of loss(K))
