@@ -49,3 +49,11 @@ def bump_targets(bump_centers, bump_width, n_input_samples):
         i_high = min(n_input_samples-1, i_mid + bump_width)
         f_targets[n,i_low:i_high] = 1 # assign the bump
     return f_targets
+
+def bump_on(bump_starts, n_input_samples):
+    n_targets = len(bump_starts)
+    f_targets = np.zeros((n_targets, n_input_samples))
+    for n in range(n_targets):
+        i_low = int(bump_starts[n]*n_input_samples)
+        f_targets[n,i_low:] = 1 # assign the bump
+    return f_targets
