@@ -52,6 +52,7 @@ class TuneK:
                     target_lib_file = None,
                     acc_opt = 'inner',
                     w_opt = 'inner',
+                    single_beta = False,
                     opt_settings_outer = {}, # use default settings for differential evolution
                     m = 3,
                     n_input_samples = 40, #discretization of first monomer...time complexity scales linearly w.r.t. this parameter
@@ -122,6 +123,7 @@ class TuneK:
 
         self.setup()
 
+        self.single_beta = single_beta
         self.acc_opt = acc_opt
         self.w_opt = w_opt
         self.lsq_linear_method = lsq_linear_method
@@ -400,11 +402,44 @@ class TuneK:
 
         return mse_best
 
+    def try_lsq_linear(self, x, y):
+        try:
+            foo = scipy.optimize.lsq_linear(x, y, bounds=self.lsq_bounds, method=self.lsq_linear_method)
+        except:
+            print('BVLS tolerance not met. Switching to TRF solver.')
+            foo = scipy.optimize.lsq_linear(x, y, bounds=self.lsq_bounds, method='trf')
+        return foo
+
+    def find_best_beta(self, x, y):
+        n_betas = x.shape[1]
+        foo_list = [self.try_lsq_linear(x[:,j].reshape(-1,1), y) for j in range(n_betas)]
+        j_best = 0
+        mse_best = np.Inf
+        for j in range(n_betas):
+            mse_j = np.sum(foo_list[j].fun**2)
+            if mse_j <= mse_best:
+                j_best = j
+                mse_best = mse_j
+                foo_best = foo_list[j]
+        # assign beta vector
+        beta = np.zeros(n_betas)
+        beta[j_best] = foo_best.x
+        foo_best.x = beta
+        return foo_best
+
+    def lsq_linear_wrapper(self, x, y):
+        if self.single_beta:
+            foo = self.find_best_beta(x, y)
+        else:
+            foo = self.try_lsq_linear(x, y)
+        return foo
+
+
     def inner_opt(self, c0_acc, K, j_target=None, error_only=False):
         '''This function computes optimal linear weights and the associated errors incurred for these optimal weights.'''
         if self.acc_opt=='inner' and self.w_opt=='inner':
             dimers = self.g1(c0_acc, K) # 40 x 9
-            foo = scipy.optimize.lsq_linear(dimers, self.f_targets[j_target], bounds=self.lsq_bounds, method=self.lsq_linear_method)
+            foo = self.lsq_linear_wrapper(x=dimers, y=self.f_targets[j_target])
             theta_star_j = foo.x
             mse_j = np.sum(foo.fun**2) / self.n_input_samples / self.f_targets_max_sq[j_target]
             if error_only:
@@ -420,7 +455,7 @@ class TuneK:
                 dimers_all += [dimers_j]
             targets_all = self.f_targets.reshape(-1) #(40*n,)
             dimers_all = np.vstack(dimers_all)
-            foo = scipy.optimize.lsq_linear(dimers_all, targets_all, bounds=self.lsq_bounds, method=self.lsq_linear_method)
+            foo = self.lsq_linear_wrapper(x=dimers_all, y=targets_all)
             theta_star = foo.x
             mse_total = np.sum(foo.fun**2) / self.n_input_samples / np.sum(self.f_targets_max_sq)
 
@@ -440,11 +475,7 @@ class TuneK:
             mse_total = 0
             mse_list = [0 for j in range(self.n_targets)]
             for j in range(self.n_targets):
-                try:
-                    foo = scipy.optimize.lsq_linear(dimers, self.f_targets[j], bounds=self.lsq_bounds, method=self.lsq_linear_method)
-                except:
-                    print('BVLS tolerance not met. Switching to TRF solver.')
-                    foo = scipy.optimize.lsq_linear(dimers, self.f_targets[j], bounds=self.lsq_bounds, method='trf')
+                foo = self.lsq_linear_wrapper(x=dimers, y=self.f_targets[j])
                 theta_star[j] = foo.x
                 mse_j = np.sum(foo.fun**2) / self.n_input_samples / self.f_targets_max_sq[j]
                 mse_list[j] = mse_j
