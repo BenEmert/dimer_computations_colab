@@ -12,11 +12,11 @@
 # module load python3/3.7.0
 # module load gcc/9.2.0
 
-round_dir="/groups/astuart/mlevine/dimer_computations_colab/results/3bumpsON_eps1e-16"
+round_dir="/groups/astuart/mlevine/dimer_computations_colab/results/3bumpsON_eps1e-16_singlebeta"
 
 echo "Sending results to $round_dir"
-srun --ntasks=1 python3 bump_inference_tests_ainner_3bump_on_Library.py --m 3 --maxiter_O 10 --popsize_O 3 --maxiter_K 10 --popsize_K 25 --base_dir "$round_dir/a-inner_w-inner_m3/inner10x3_outer10x25" &
-srun --ntasks=1 python3 bump_inference_tests_ainner_3bump_on_Library.py --m 4 --maxiter_O 10 --popsize_O 3 --maxiter_K 10 --popsize_K 25 --base_dir "$round_dir/a-inner_w-inner_m4/inner10x3_outer10x25" &
-srun --ntasks=1 python3 bump_inference_tests_ainner_3bump_on_Library.py --m 5 --maxiter_O 10 --popsize_O 3 --maxiter_K 10 --popsize_K 25 --base_dir "$round_dir/a-inner_w-inner_m5/inner10x3_outer10x25" &
-srun --ntasks=1 python3 bump_inference_tests_ainner_3bump_on_Library.py --m 6 --maxiter_O 10 --popsize_O 3 --maxiter_K 10 --popsize_K 25 --base_dir "$round_dir/a-inner_w-inner_m6/inner10x3_outer10x25"
+srun --ntasks=1 python3 bump_inference_tests_ainner_3bump_on_Library.py --single_beta 1 --m 3 --maxiter_O 10 --popsize_O 3 --maxiter_K 10 --popsize_K 25 --base_dir "$round_dir/a-inner_w-inner_m3/inner10x3_outer10x25" &
+srun --ntasks=1 python3 bump_inference_tests_ainner_3bump_on_Library.py --single_beta 1 --m 4 --maxiter_O 10 --popsize_O 3 --maxiter_K 10 --popsize_K 25 --base_dir "$round_dir/a-inner_w-inner_m4/inner10x3_outer10x25" &
+srun --ntasks=1 python3 bump_inference_tests_ainner_3bump_on_Library.py --single_beta 1 --m 5 --maxiter_O 10 --popsize_O 3 --maxiter_K 10 --popsize_K 25 --base_dir "$round_dir/a-inner_w-inner_m5/inner10x3_outer10x25" &
+srun --ntasks=1 python3 bump_inference_tests_ainner_3bump_on_Library.py --single_beta 1 --m 6 --maxiter_O 10 --popsize_O 3 --maxiter_K 10 --popsize_K 25 --base_dir "$round_dir/a-inner_w-inner_m6/inner10x3_outer10x25"
 wait
