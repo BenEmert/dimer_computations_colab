@@ -30,6 +30,7 @@ parser1.add_argument('--m', default=3, type=int) #number of total monomers
 parser1.add_argument('--n_input_samples', default=40, type=int) #Number of values to titrate the input monomer species. Values spaced evenly on a log10 scale
 parser1.add_argument('--acc_opt', default="outer", type=str)
 parser1.add_argument('--w_opt', default="inner", type=str)
+parser1.add_argument('--single_beta', default=0, type=int)
 parser1.add_argument('--plot_inner_opt', default=1, type=int)
 FLAGS_tune, __ = parser1.parse_known_args()
 
