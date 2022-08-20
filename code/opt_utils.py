@@ -69,9 +69,12 @@ class AnalyzePymoo:
     def __init__(self, opt_list,
                     xnames = None,
                     truth = [],
+                    bounds = [-6,6],
                     **kwargs):
+
         self.opt_list = opt_list
         self.xnames = xnames
+        self.bounds = bounds
 
         self.truth = truth
 
@@ -82,11 +85,17 @@ class AnalyzePymoo:
         # get opt sequence
         self.X = []
         self.F = []
+        self.Xall = []
+        self.Fall = []
         self.n_params = self.opt_list[0].opt.get("X").shape[1]
+
         for n in range(len(self.opt_list)):
             history = self.opt_list[n].history
             self.X += [np.vstack([e.opt.get("X") for e in history])]
             self.F += [np.array([e.opt[0].F for e in history])]
+
+            self.Xall += [np.vstack([e.pop.get("X") for e in history])]
+            self.Fall += [np.vstack([e.pop.get("F") for e in history])]
 
         # get index for iterations
         self.n_evals = np.array([e.evaluator.n_eval for e in history]) # only need 1, and they are identical
@@ -95,6 +104,9 @@ class AnalyzePymoo:
         self.X = np.array(self.X)
         self.F = np.array(self.F)
 
+        self.Xall = np.array(self.Xall) # n_opt_runs X n_evals X n_params
+        self.Fall = np.array(self.Fall) # n_opt_runs X n_evals X n_objs (=1)
+
         if self.X.ndim==2:
             self.X = np.expand_dims(self.X, 0)
             self.F = np.expand_dims(self.F, 0)
@@ -102,8 +114,20 @@ class AnalyzePymoo:
         if self.xnames is None:
             self.xnames = ['P{}'.format(c) for c in range(self.X.shape[-1])]
 
+        # order all evals in terms of F
+        inds = np.argsort(self.Fall.reshape(-1))
+        self.Fall_ordered = self.Fall.reshape(-1)[inds]
+        self.Xall_ordered = self.Xall.reshape(-1,self.Xall.shape[-1])[inds]
+
     def write_info(self, writedir):
-        dump = {'X': self.X, 'F': self.F, 'n_evals': self.n_evals, 'truth': self.truth}
+        dump = {'X': self.X,
+                'F': self.F,
+                # 'Xall': self.Xall,
+                # 'Fall': self.Fall,
+                'Xall_ordered': self.Xall_ordered,
+                'Fall_ordered': self.Fall_ordered,
+                'n_evals': self.n_evals,
+                'truth': self.truth}
         dump_data(dump, os.path.join(writedir, 'opt_info.pkl'))
 
 
@@ -118,12 +142,49 @@ class AnalyzePymoo:
 
         self.compare_params(plotdir)
 
+        # plot robustness in parameter space
+        self.plot_robustness(plotdir)
+
         # plot per-optimization:
         for n in range(len(self.opt_list)):
             pdir = os.path.join(plotdir, 'run_{}'.format(n))
             os.makedirs(pdir, exist_ok=True)
             self.plot_params(self.X[n], pdir)
 
+
+    def plot_robustness(self, plotdir, percentile_list=[1, 10, 50, 100]):
+
+        #$ plot CDF
+        fig, ax = plt.subplots(nrows=1, ncols=1, figsize = [8,8])
+        sns.ecdfplot(data=self.Fall_ordered, ax=ax)
+
+        ax.set_title('Empirical CDF of Network Expressivity')
+        ax.set_ylabel('Proportion')
+        ax.set_xlabel('Expressivity (target misfits)')
+
+        # plt.subplots_adjust(left=None, bottom=None, right=None, top=None, wspace=0.6, hspace=0.6)
+        fig.savefig(os.path.join(plotdir, 'F_cdf.pdf'), format='pdf')
+        ax.set_xscale('log')
+        fig.savefig(os.path.join(plotdir, 'F_cdf_log.pdf'), format='pdf')
+        plt.close()
+
+        ## plot bivariate scatter plots of parameter choices at different thresholds of quality
+        thresh_list = np.percentile(self.Fall_ordered, percentile_list)
+        for j in range(len(percentile_list)):
+            t = thresh_list[j]
+            Xset = self.Xall_ordered[self.Fall_ordered<=thresh_list[j]]
+            fig = sns.pairplot(data=pd.DataFrame(Xset), corner=True)
+            fig.set(xlim=self.bounds, ylim = self.bounds)
+            fig.savefig(os.path.join(plotdir, 'X_bivariate_thresh{}.pdf'.format(percentile_list[j])), format='pdf')
+
+    def sample_X_from_percentile(self, p_high=100, p_low=0, n=2):
+        thresh_tup = np.percentile(self.Fall_ordered, [p_low, p_high])
+        Xset = self.Xall_ordered[(self.Fall_ordered<=thresh_tup[1]) & (self.Fall_ordered>=thresh_tup[0])]
+
+        Nmax = Xset.shape[0]
+        N = min(Nmax, n)
+        X = Xset[np.random.choice(Nmax, size=N, replace=False)]
+        return X
 
     def compare_params(self, plotdir, nm='a0'):
 
