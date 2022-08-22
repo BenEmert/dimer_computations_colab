@@ -224,7 +224,7 @@ class TuneK:
 
         # make plots and check the solution
         print('\n## Now running/plotting final optimal values... ##')
-        self.loss_k(k_opt, final_run=True)
+        self.loss_k(k_opt, final_run=True, plot_surface=True, nx_surface=100)
 
         analyzeOpt = AnalyzePymoo([res], self.Knames, truth=self.truth['K'])
         analyzeOpt.make_plots(self.output_dir)
@@ -234,47 +234,76 @@ class TuneK:
         for j in range(len(percentile_list)-1):
             k_examples = analyzeOpt.sample_X_from_percentile(p_low=percentile_list[j], p_high=percentile_list[j+1], n=n_examples)
             for n in range(k_examples.shape[0]):
-                self.loss_k(k_examples[n], final_run=True, extra_nm='PercentileSims/Percentile{}/example{}'.format(percentile_list[j+1],n))
+                self.loss_k(k_examples[n], final_run=True, nx_surface=100,
+                plot_surface=True,
+                extra_nm='PercentileSims/Percentile{}/example{}'.format(percentile_list[j+1],n))
 
         return res
 
-    def loss_surface_k(self, K, a_list=[], nx=100):
+    def loss_surface_k(self, K, a_list=[], nx=100, extra_nm=''):
+        '''When fitting 1 accessory concentrations per-target, we plot the
+        conditional loss surface for 1 target, assuming optimal choice of
+        accessory for the other targets.'''
+        figdir = os.path.join(self.output_dir, extra_nm)
+        os.makedirs(figdir, exist_ok=True)
+
         a0 = np.linspace(self.acc_lb_list, self.acc_ub_list, nx).T
         xv, yv = np.meshgrid(*a0)
-        zs = np.zeros((nx,nx))
-        for i in range(nx):
-            for j in range(nx):
-                # treat xv[i,j], yv[i,j]
-                c0_acc = np.array([xv[i,j], yv[i,j]])
-                theta_star, mse_total, mse_list = self.inner_opt(c0_acc, K)
-                zs[i,j] = mse_total
 
-        for nm in ['', '_log']:
-            fig, axs = plt.subplots(nrows=1, ncols=1, figsize = [10,10])
-            plt.subplots_adjust(left=None, bottom=None, right=None, top=None, wspace=0.4, hspace=0.4)
-            if nm=='_log':
-                zfoo = np.log10(zs)
+        if self.acc_opt=='inner':
+            n_loops = self.n_targets
+            c0_acc_full = np.copy(a_list[0])
+        else:
+            n_loops = 1
+
+        for k in range(n_loops):
+            if n_loops > 1:
+                k_name = '_target{}'.format(k)
             else:
-                zfoo = zs
-            cf = axs.contourf(a0[0], a0[1], zfoo)
-            axs.set_xlabel('a_0')
-            axs.set_ylabel('a_1')
-            if len(self.truth['a0']):
-                axs.axvline(x=self.truth['a0'][0], color='red', linestyle='--', linewidth=1)
-                axs.axhline(y=self.truth['a0'][1], color='red', linestyle='--', linewidth=1)
-            for c in range(len(a_list)):
-                aopt = a_list[c]
-                axs.scatter(aopt[0], aopt[1], s=500, c=default_colors[c+1], marker='+', label='Run {}'.format(c))
-                axs.legend()
-            cbar = fig.colorbar(cf)
-            cbar.ax.set_ylabel('MSE' + nm)
+                k_name = ''
 
-            # axs.scatter(self.truth['a0'][0], self.truth['a0'][1], s=1000, c='red', marker="*")
-            fig.savefig(os.path.join(self.output_dir, 'inner_loss_surface{}.pdf'.format(nm)), format='pdf')
-            plt.close()
+            zs = np.zeros((nx,nx))
+            for i in range(nx):
+                for j in range(nx):
+                    # treat xv[i,j], yv[i,j]
+                    c0_acc = np.array([xv[i,j], yv[i,j]])
+                    if self.acc_opt=='inner' and self.w_opt=='inner':
+                        _, mse_total = self.inner_opt(c0_acc, K, j_target=k)
+                    elif self.acc_opt=='inner' and self.w_opt=='outer':
+                        c0_acc_full[k] = c0_acc
+                        _, mse_total, mse_list = self.inner_opt(c0_acc_full.reshape(-1), K)
+                    elif self.acc_opt=='outer' and self.w_opt=='inner':
+                        _, mse_total, mse_list = self.inner_opt(c0_acc, K)
+                    zs[i,j] = mse_total
+
+            for nm in ['', '_log']:
+                fig, axs = plt.subplots(nrows=1, ncols=1, figsize = [10,10])
+                plt.subplots_adjust(left=None, bottom=None, right=None, top=None, wspace=0.4, hspace=0.4)
+                if nm=='_log':
+                    zfoo = np.log10(zs)
+                else:
+                    zfoo = zs
+                cf = axs.contourf(a0[0], a0[1], zfoo)
+                axs.set_xlabel('a_0')
+                axs.set_ylabel('a_1')
+                if len(self.truth['a0']):
+                    axs.axvline(x=self.truth['a0'][0], color='red', linestyle='--', linewidth=1)
+                    axs.axhline(y=self.truth['a0'][1], color='red', linestyle='--', linewidth=1)
+                for c in range(len(a_list)):
+                    aopt = a_list[c]
+                    if aopt.ndim>1:
+                        aopt = aopt[k]
+                    axs.scatter(aopt[0], aopt[1], s=500, c=default_colors[c+1], marker='+', label='Run {}'.format(c))
+                    axs.legend()
+                cbar = fig.colorbar(cf)
+                cbar.ax.set_ylabel('MSE' + nm)
+
+                # axs.scatter(self.truth['a0'][0], self.truth['a0'][1], s=1000, c='red', marker="*")
+                fig.savefig(os.path.join(figdir, 'inner_loss_surface{}{}.pdf'.format(k_name, nm)), format='pdf')
+                plt.close()
 
 
-    def loss_k(self, K, n_starts=1, final_run=False, verbose=False, normalize_plot=False, plot_surface=False, extra_nm='Final'):
+    def loss_k(self, K, n_starts=1, final_run=False, verbose=False, normalize_plot=False, plot_surface=False, extra_nm='Final', nx_surface=100):
         self.n_starts = n_starts
         output_list = self.outer_opt(K, verbose=verbose, make_plots=self.plot_inner_opt)
         c = -1
@@ -288,7 +317,7 @@ class TuneK:
 
         if plot_surface:
             a0_list = [d['c0_acc_best'] for d in output_list]
-            self.loss_surface_k(K, a_list=a0_list)
+            self.loss_surface_k(K, a_list=a0_list, extra_nm=extra_nm, nx=nx_surface)
         return mse_best
 
     def one_loss_k(self, K, mse_best=None, mse_list_best=None, c0_acc_best=None, theta_best=None,
@@ -465,7 +494,6 @@ class TuneK:
         else:
             foo = self.try_lsq_linear(x, y)
         return foo
-
 
     def inner_opt(self, c0_acc, K, j_target=None, error_only=False):
         '''This function computes optimal linear weights and the associated errors incurred for these optimal weights.'''
