@@ -61,48 +61,10 @@ parser2.add_argument('--maxiter_K', default=3, type=int)
 parser2.add_argument('--popsize_K', default=20, type=int)
 parser2.add_argument('--polish_K', default=0, type=int)
 parser2.add_argument('--workers_K', default=1, type=int) # default is to use 1 worker (not paralleized). -1 uses all available workers!
+parser2.add_argument('--nstarts_K', default=2, type=int) # number of outer optimizations to be restarted for learning K
+parser2.add_argument('--nxsurface_K', default=100, type=int) # number gridpoints for loss surface
 FLAGS_diffev, __ = parser2.parse_known_args()
 opt_setts_K = make_opt_settings(FLAGS_diffev.__dict__)
-
-def do_opt(opt_setts, foo, K_true=[], seed=None):
-    n_var = len(foo.param_lb)
-
-    problem = FunctionalProblem(
-        n_var=n_var,
-        objs=foo.loss_k,
-        xl=foo.param_lb,
-        xu=foo.param_ub,
-        constr_ieq=[])
-
-    termination = SingleObjectiveDefaultTermination(
-        x_tol=1e-6,
-        cv_tol=0.0,
-        f_tol=1e-6,
-        nth_gen=max(1, int(opt_setts['maxiter']/4)),
-        n_last=20,
-        n_max_gen=opt_setts['maxiter'])
-
-    algorithm = DE(CR=0.9,
-        pop_size=opt_setts['popsize']*n_var)
-
-    res = minimize(
-        problem,
-        algorithm,
-        termination,
-        seed=seed,
-        save_history=True,
-        verbose=True)
-
-    k_opt = res.X
-    k_opt_loss = res.F
-
-    # make plots and check the solution
-    print('\n## Now running/plotting final optimal values... ##')
-    foo.loss_k(k_opt, final_run=True)
-
-    analyzeOpt = AnalyzePymoo([res], foo.Knames, truth=K_true)
-    analyzeOpt.make_plots(foo.output_dir)
-    return res
 
 def opt_wrapper(opt_setts, n_rounds=10, bump_center=0.5, bump_width=2, **kwargs):
 
@@ -135,6 +97,8 @@ def opt_wrapper(opt_setts, n_rounds=10, bump_center=0.5, bump_width=2, **kwargs)
     # for c in range(n_rounds):
     #     # next, perform full optimization over K and a, theta
     #     res = do_opt(opt_setts, FOO, seed=c)
+    #     FOO.optimize_binding(seed=c, **opt_setts)
+
     return
 
 ######

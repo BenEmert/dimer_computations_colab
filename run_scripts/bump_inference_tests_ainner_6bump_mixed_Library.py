@@ -60,6 +60,8 @@ parser2.add_argument('--maxiter_K', default=3, type=int)
 parser2.add_argument('--popsize_K', default=20, type=int)
 parser2.add_argument('--polish_K', default=0, type=int)
 parser2.add_argument('--workers_K', default=1, type=int) # default is to use 1 worker (not paralleized). -1 uses all available workers!
+parser2.add_argument('--nstarts_K', default=2, type=int) # number of outer optimizations to be restarted for learning K
+parser2.add_argument('--nxsurface_K', default=100, type=int) # number gridpoints for loss surface
 FLAGS_diffev, __ = parser2.parse_known_args()
 opt_setts_K = make_opt_settings(FLAGS_diffev.__dict__)
 
