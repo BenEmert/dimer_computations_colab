@@ -190,21 +190,53 @@ class TuneK:
         self.param_ub = [self.param_ub]*self.num_rxns
 
 
-    def optimize_binding(self, popsize=15, maxiter=10, acc_opt="outer", w_opt="inner"):
-        self.opt = differential_evolution(self.loss_k,
-                disp = True,
-                bounds = np.vstack((self.param_lb, self.param_ub)).T,
-                maxiter = maxiter,
-                popsize = popsize,
-                workers = 1)
-        self.k_opt = self.opt.x
-        self.k_opt_loss = self.opt.fun
+    def optimize_binding(self, popsize=15, maxiter=10, seed=None, **kwargs):
+
+        n_var = len(self.param_lb)
+
+        problem = FunctionalProblem(
+            n_var=n_var,
+            objs=self.loss_k,
+            xl=self.param_lb,
+            xu=self.param_ub,
+            constr_ieq=[])
+
+        termination = SingleObjectiveDefaultTermination(
+            x_tol=1e-6,
+            cv_tol=0.0,
+            f_tol=1e-6,
+            nth_gen=max(1, int(maxiter/4)),
+            n_last=20,
+            n_max_gen=maxiter)
+
+        algorithm = DE(CR=0.9, pop_size=popsize*n_var)
+
+        res = minimize(
+            problem,
+            algorithm,
+            termination,
+            seed=seed,
+            save_history=True,
+            verbose=True)
+
+        k_opt = res.X
+        k_opt_loss = res.F
 
         # make plots and check the solution
-        print('\n\n#### Now running/plotting final optimal values... ####')
-        self.loss_k(self.k_opt, final_run=True)
+        print('\n## Now running/plotting final optimal values... ##')
+        self.loss_k(k_opt, final_run=True)
 
-        return foo
+        analyzeOpt = AnalyzePymoo([res], self.Knames, truth=self.truth['K'])
+        analyzeOpt.make_plots(self.output_dir)
+
+        percentile_list = [0, 1, 10, 50, 100]
+        n_examples = 3
+        for j in range(len(percentile_list)-1):
+            k_examples = analyzeOpt.sample_X_from_percentile(p_low=percentile_list[j], p_high=percentile_list[j+1], n=n_examples)
+            for n in range(k_examples.shape[0]):
+                self.loss_k(k_examples[n], final_run=True, extra_nm='PercentileSims/Percentile{}/example{}'.format(percentile_list[j+1],n))
+
+        return res
 
     def loss_surface_k(self, K, a_list=[], nx=100):
         a0 = np.linspace(self.acc_lb_list, self.acc_ub_list, nx).T
