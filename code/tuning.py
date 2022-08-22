@@ -190,7 +190,7 @@ class TuneK:
         self.param_ub = [self.param_ub]*self.num_rxns
 
 
-    def optimize_binding(self, popsize=15, maxiter=10, seed=None, **kwargs):
+    def optimize_binding(self, popsize=15, maxiter=10, nxsurface=100, seed=None, nstarts=1, polish=False, **kwargs):
 
         n_var = len(self.param_lb)
 
@@ -211,32 +211,51 @@ class TuneK:
 
         algorithm = DE(CR=0.9, pop_size=popsize*n_var)
 
-        res = minimize(
-            problem,
-            algorithm,
-            termination,
-            seed=seed,
-            save_history=True,
-            verbose=True)
+        res_list = []
+        for ns in range(nstarts):
+            res = minimize(
+                problem,
+                algorithm,
+                termination,
+                seed=ns,
+                save_history=True,
+                verbose=True)
 
-        k_opt = res.X
-        k_opt_loss = res.F
+            if polish:
+                result = scipy.optimize.minimize(problem.objs[0],
+                                  res.X,
+                                  method='trust-constr',
+                                  bounds=np.array([problem.xl, problem.xu]).T)
+                res.X = result.x
+                res.F = result.fun
 
-        # make plots and check the solution
-        print('\n## Now running/plotting final optimal values... ##')
-        self.loss_k(k_opt, final_run=True, plot_surface=True, nx_surface=100)
+            res_list += [res]
 
-        analyzeOpt = AnalyzePymoo([res], self.Knames, truth=self.truth['K'])
-        analyzeOpt.make_plots(self.output_dir)
+            k_opt = res.X
+            k_opt_loss = res.F
 
-        percentile_list = [0, 1, 10, 50, 100]
-        n_examples = 3
-        for j in range(len(percentile_list)-1):
-            k_examples = analyzeOpt.sample_X_from_percentile(p_low=percentile_list[j], p_high=percentile_list[j+1], n=n_examples)
-            for n in range(k_examples.shape[0]):
-                self.loss_k(k_examples[n], final_run=True, nx_surface=100,
-                plot_surface=True,
-                extra_nm='PercentileSims/Percentile{}/example{}'.format(percentile_list[j+1],n))
+            # make plots and check the solution
+            extra_nm = 'FinalK_{}'.format(ns)
+            print('\n## Now running/plotting final optimal values... ##')
+            self.loss_k(k_opt, final_run=True, plot_surface=True, nxsurface=nxsurface, extra_nm=extra_nm)
+
+            analyzeOpt = AnalyzePymoo([res], self.Knames, truth=self.truth['K'])
+            analyzeOpt.make_plots(os.path.join(self.output_dir, extra_nm))
+
+            percentile_list = [0, 1, 10, 50, 100]
+            n_examples = 3
+            for j in range(len(percentile_list)-1):
+                k_examples = analyzeOpt.sample_X_from_percentile(p_low=percentile_list[j], p_high=percentile_list[j+1], n=n_examples)
+                for n in range(k_examples.shape[0]):
+                    self.loss_k(k_examples[n], final_run=True, nxsurface=nxsurface,
+                    plot_surface=True,
+                    extra_nm='PercentileSims_run{}/Percentile{}/example{}'.format(ns,percentile_list[j+1],n))
+
+        # plot multi-start summary
+        new_plot_dirname = os.path.join(self.output_dir,'Final_Summary')
+        ap = AnalyzePymoo(res_list, self.Knames, truth=self.truth['K'])
+        ap.make_plots(new_plot_dirname)
+
 
         return res
 
@@ -303,7 +322,7 @@ class TuneK:
                 plt.close()
 
 
-    def loss_k(self, K, n_starts=1, final_run=False, verbose=False, normalize_plot=False, plot_surface=False, extra_nm='Final', nx_surface=100):
+    def loss_k(self, K, n_starts=1, final_run=False, verbose=False, normalize_plot=False, plot_surface=False, extra_nm='Running', nxsurface=100):
         self.n_starts = n_starts
         output_list = self.outer_opt(K, verbose=verbose, make_plots=self.plot_inner_opt)
         c = -1
@@ -313,11 +332,11 @@ class TuneK:
                             final_run=final_run,
                             verbose=verbose,
                             normalize_plot=normalize_plot,
-                            output_dir=os.path.join(self.output_dir,'{}_run_{}'.format(extra_nm, c)))
+                            output_dir=os.path.join(self.output_dir,'{}/run{}'.format(extra_nm, c)))
 
         if plot_surface:
             a0_list = [d['c0_acc_best'] for d in output_list]
-            self.loss_surface_k(K, a_list=a0_list, extra_nm=extra_nm, nx=nx_surface)
+            self.loss_surface_k(K, a_list=a0_list, extra_nm=extra_nm, nx=nxsurface)
         return mse_best
 
     def one_loss_k(self, K, mse_best=None, mse_list_best=None, c0_acc_best=None, theta_best=None,

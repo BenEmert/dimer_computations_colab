@@ -147,7 +147,7 @@ class AnalyzePymoo:
 
         # plot per-optimization:
         for n in range(len(self.opt_list)):
-            pdir = os.path.join(plotdir, 'run_{}'.format(n))
+            pdir = os.path.join(plotdir, 'run{}'.format(n))
             os.makedirs(pdir, exist_ok=True)
             self.plot_params(self.X[n], pdir)
 
@@ -156,7 +156,7 @@ class AnalyzePymoo:
 
         #$ plot CDF
         fig, ax = plt.subplots(nrows=1, ncols=1, figsize = [8,8])
-        sns.ecdfplot(data=self.Fall_ordered, ax=ax)
+        sns.ecdfplot(data=self.Fall.T.squeeze(), ax=ax)
 
         ax.set_title('Empirical CDF of Network Expressivity')
         ax.set_ylabel('Proportion')
@@ -172,10 +172,19 @@ class AnalyzePymoo:
         thresh_list = np.percentile(self.Fall_ordered, percentile_list)
         for j in range(len(percentile_list)):
             t = thresh_list[j]
-            Xset = self.Xall_ordered[self.Fall_ordered<=thresh_list[j]]
-            fig = sns.pairplot(data=pd.DataFrame(Xset), corner=True)
-            fig.set(xlim=self.bounds, ylim = self.bounds)
-            fig.savefig(os.path.join(plotdir, 'X_bivariate_thresh{}.pdf'.format(percentile_list[j])), format='pdf')
+            df = pd.DataFrame()
+            for k in range(self.Fall.shape[0]):
+                Xset_k = self.Xall[k,(self.Fall[k]<=thresh_list[j]).squeeze()]
+                df_k = pd.DataFrame(Xset_k, columns=self.xnames)
+                df_k['run'] = k
+                df = pd.concat([df,df_k])
+            df.reset_index(drop=True, inplace=True)
+            try:
+                fig = sns.pairplot(data=df, corner=True, hue='run')
+                fig.set(xlim=self.bounds, ylim=self.bounds)
+                fig.savefig(os.path.join(plotdir, 'X_bivariate_thresh{}.pdf'.format(percentile_list[j])), format='pdf')
+            except:
+                print('UNABLE TO PRINT BIVARIATE PLOT. WHAT IS WRONG? IDK.')
 
     def sample_X_from_percentile(self, p_high=100, p_low=0, n=2):
         thresh_tup = np.percentile(self.Fall_ordered, [p_low, p_high])
