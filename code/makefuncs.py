@@ -16,6 +16,9 @@ def set_target_library(n_input_samples=10, target_lib_name="SinCos", target_lib_
         target_function_cos = 0.5*(np.cos(x)+1)
 
         f_targets = np.vstack((target_function_sin, target_function_cos))
+    elif target_lib_name=='bumps_all':
+        F = bumps_all()
+        f_targets = interp_target(n_input_samples, F, kind='next')
     elif target_lib_name=='MetaClusters':
         with open(target_lib_file, 'rb') as f:
             F = np.load(f) # n_clusters x discretization
@@ -31,12 +34,12 @@ def set_target_library(n_input_samples=10, target_lib_name="SinCos", target_lib_
 
     return f_targets
 
-def interp_target(n_input_samples, F):
+def interp_target(n_input_samples, F, kind='cubic'):
     ''''''
     n_clusters, n_pts = F.shape
     grid = np.linspace(0, 1, n_pts)
     target_grid = np.linspace(0, 1, n_input_samples)
-    f_interp = scipy.interpolate.interp1d(grid, F, kind='cubic')
+    f_interp = scipy.interpolate.interp1d(grid, F, kind=kind)
     f_targets = f_interp(target_grid)
     return f_targets
 
@@ -56,4 +59,43 @@ def bump_on(bump_starts, n_input_samples):
     for n in range(n_targets):
         i_low = int(bump_starts[n]*n_input_samples)
         f_targets[n,i_low:] = 1 # assign the bump
+    return f_targets
+
+def bumps_all(n_max_switches=2, n_switch_points=5, bounds=(-3,3)):
+
+    switch_grid = np.linspace(bounds[0], bounds[1], n_switch_points+2) # always includes bounds[0] and bounds[1] by default (+2 for endpoints)
+
+    for n_lam in range(n_max_switches+1):
+        if n_lam==0:
+            f_off = np.zeros_like(switch_grid)
+            f_on = np.ones_like(switch_grid)
+            f_targets = [f_off, f_on]
+            continue
+        elif n_lam==1:
+            # switch_points = switch_grid[1:-1].reshape(-1,1)
+            switch_points = switch_grid[1:].reshape(-1,1)
+        else:
+            # get all combinations of switch points
+            switch_points = np.array(np.meshgrid(*[switch_grid for _ in range(n_lam)])).T.reshape(-1,n_lam)
+
+            # restrict to subset to ordered pairs
+            switch_points = switch_points[np.all(switch_points[:,:-1] < switch_points[:,1:], axis=1)]
+
+            # remove startpoint
+            # switch_points = switch_points[(switch_points[:,0]>bounds[0]) & (switch_points[:,-1]<bounds[1])]
+            switch_points = switch_points[(switch_points[:,0]>bounds[0])]
+
+        for f0 in [0,1]: # start off/on
+            for sp_vec in switch_points:
+                f = np.zeros_like(switch_grid)
+                f[:] = f0 # set everything to f0 (on/off)
+                # print(sp_vec)
+                for j in range(1,len(switch_grid)):
+                    if switch_grid[j] in sp_vec:
+                        # print('Switching at',j)
+                        f[j:] = not(f[j-1])
+                f_targets.append(f)
+
+    # make targets an array
+    f_targets = np.array(f_targets)
     return f_targets
