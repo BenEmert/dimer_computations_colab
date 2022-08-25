@@ -68,6 +68,7 @@ class TuneK:
                     lsq_linear_method = 'bvls',
                     lsq_bounds = (0, np.Inf),
                     dimer_eps=1e-16,
+                    nxsurface=10,
                     **kwargs):
         """
         Run simulations for dimer networks of size m and input titration size t
@@ -118,6 +119,7 @@ class TuneK:
         self.lsq_bounds = lsq_bounds #(0, np.Inf)
 
         self.plot_inner_opt = plot_inner_opt
+        self.nxsurface = nxsurface # number of grid points per axis on inner optimization plots
 
         self.truth = {'K': [], 'a0': [], 'theta': []} # useful for plotting inferences vs truth
 
@@ -133,8 +135,14 @@ class TuneK:
         self.f_targets = set_target_library(n_input_samples=n_input_samples, target_lib_name=target_lib_name, target_lib_file=target_lib_file)
         self.n_targets = self.f_targets.shape[0]
         self.f_targets_max_sq = np.max(self.f_targets, axis=1)**2
+        self.f_targets_max_sq[self.f_targets_max_sq==0] = 1 #avoid divide by zero
+
+        self.plot_targets(output_dir=self.output_dir)
 
         self.set_opts()
+
+    def plot_targets(self, output_dir, fits=None):
+        plot_targets(output_dir, self.input_concentration, self.f_targets, fits)
 
     def set_target(self, F):
         '''Overwrite existing targets'''
@@ -190,7 +198,7 @@ class TuneK:
         self.param_ub = [self.param_ub]*self.num_rxns
 
 
-    def optimize_binding(self, popsize=15, maxiter=10, nxsurface=100, seed=None, nstarts=1, polish=False, **kwargs):
+    def optimize_binding(self, popsize=15, maxiter=10, seed=None, nstarts=1, polish=False, plot_surface=False, **kwargs):
 
         n_var = len(self.param_lb)
 
@@ -237,8 +245,7 @@ class TuneK:
             # make plots and check the solution
             extra_nm = 'FinalK_{}'.format(ns)
             print('\n## Now running/plotting final optimal values... ##')
-            self.loss_k(k_opt, final_run=True, plot_surface=True, nxsurface=nxsurface, extra_nm=extra_nm)
-
+            self.loss_k(k_opt, final_run=True, plot_surface=plot_surface, nxsurface=self.nxsurface, extra_nm=extra_nm)
             analyzeOpt = AnalyzePymoo([res], self.Knames, truth=self.truth['K'])
             analyzeOpt.make_plots(os.path.join(self.output_dir, extra_nm))
 
@@ -247,8 +254,8 @@ class TuneK:
             for j in range(len(percentile_list)-1):
                 k_examples = analyzeOpt.sample_X_from_percentile(p_low=percentile_list[j], p_high=percentile_list[j+1], n=n_examples)
                 for n in range(k_examples.shape[0]):
-                    self.loss_k(k_examples[n], final_run=True, nxsurface=nxsurface,
-                    plot_surface=True,
+                    self.loss_k(k_examples[n], final_run=True, nxsurface=self.nxsurface,
+                    plot_surface=plot_surface,
                     extra_nm='PercentileSims_run{}/Percentile{}/example{}'.format(ns,percentile_list[j+1],n))
 
         # plot multi-start summary
@@ -259,7 +266,7 @@ class TuneK:
 
         return res
 
-    def loss_surface_k(self, K, a_list=[], nx=100, extra_nm=''):
+    def loss_surface_k(self, K, a_list=[], mse_list=[], nx=100, extra_nm=''):
         '''When fitting 1 accessory concentrations per-target, we plot the
         conditional loss surface for 1 target, assuming optimal choice of
         accessory for the other targets.'''
@@ -312,7 +319,10 @@ class TuneK:
                     aopt = a_list[c]
                     if aopt.ndim>1:
                         aopt = aopt[k]
-                    axs.scatter(aopt[0], aopt[1], s=500, c=default_colors[c+1], marker='+', label='Run {}'.format(c))
+                    mse = mse_list[c]
+                    if nm=='_log':
+                        mse = np.log10(mse)
+                    axs.scatter(aopt[0], aopt[1], s=500, c=default_colors[c+1], marker='+', label='Run {} (MSE {})'.format(c, round(mse,3)))
                     axs.legend()
                 cbar = fig.colorbar(cf)
                 cbar.ax.set_ylabel('MSE' + nm)
@@ -336,7 +346,8 @@ class TuneK:
 
         if plot_surface:
             a0_list = [d['c0_acc_best'] for d in output_list]
-            self.loss_surface_k(K, a_list=a0_list, extra_nm=extra_nm, nx=nxsurface)
+            mse_list = [d['mse_best'] for d in output_list]
+            self.loss_surface_k(K, a_list=a0_list, mse_list=mse_list, extra_nm=extra_nm, nx=nxsurface)
         return mse_best
 
     def one_loss_k(self, K, mse_best=None, mse_list_best=None, c0_acc_best=None, theta_best=None,
@@ -352,77 +363,77 @@ class TuneK:
             print('theta:', theta_best)
 
         if final_run:
+
+            outdir = os.path.join(output_dir, 'optimization_results')
+            os.makedirs(outdir, exist_ok=True)
+            ncols = min(6, self.n_targets)
+            N_subs = int(np.ceil(self.n_targets / ncols))
+            j = -1
+
             N_plot_dimers = min(10, self.n_dimers)
             if N_plot_dimers == self.n_dimers:
                 dimer_inds = np.arange(N_plot_dimers)
             else:
                 dimer_inds = np.random.choice(np.arange(self.n_dimers), size=N_plot_dimers, replace=False)
 
-            N_plot_targets = min(10, self.n_targets)
-            if N_plot_targets>1:
-                fig, axs = plt.subplots(nrows=3, ncols=N_plot_targets, figsize = [N_plot_targets*10,20], squeeze=False)
-            else:
-                fig, axs = plt.subplots(nrows=N_plot_targets, ncols=3, figsize = [30, 10], squeeze=False)
-                axs = axs.T
+            for n in range(N_subs):
+                fig, axs = plt.subplots(nrows=3, ncols=ncols, figsize = [ncols*7,21], squeeze=False)
+                plt.subplots_adjust(left=None, bottom=None, right=None, top=None, wspace=0.4, hspace=0.4)
+                for cc in range(ncols):
+                    j += 1
+                    if j >= self.n_targets:
+                        continue
+                    if self.acc_opt=='inner':
+                        c0_acc = c0_acc_best[j]
+                    else:
+                        c0_acc = c0_acc_best
 
-            plt.subplots_adjust(left=None, bottom=None, right=None, top=None, wspace=0.4, hspace=0.4)
-            if N_plot_targets == self.n_targets:
-                target_inds = np.arange(N_plot_targets)
-            else:
-                target_inds = np.random.choice(np.arange(self.n_targets), size=N_plot_targets, replace=False)
-            for cc in range(N_plot_targets):
-                j = target_inds[cc]
-                if self.acc_opt=='inner':
-                    c0_acc = c0_acc_best[j]
-                else:
-                    c0_acc = c0_acc_best
+                    if self.w_opt=='inner':
+                        theta = theta_best[j]
+                    else:
+                        theta = theta_best
 
-                if self.w_opt=='inner':
-                    theta = theta_best[j]
-                else:
-                    theta = theta_best
+                    axs[0,cc].plot(self.input_concentration, self.f_targets[j], label='Target', color='black')
+                    f_hat = self.predict(K, c0_acc, theta)
+                    axs[0,cc].plot(self.input_concentration, f_hat, '--', color=default_colors[0])
+                    axs[0,cc].set_xlabel('[Input Monomer]')
+                    axs[0,cc].set_title('Fitting target-{}: MSE {}'.format(j, round(self.mse(f_hat, self.f_targets[j]), 3)))
+                    axs[0,cc].set_xscale('log')
+                    axs[0,cc].legend()
 
-                f_hat = self.predict(K, c0_acc, theta)
-                axs[0,cc].plot(self.input_concentration, self.f_targets[j], label='Target', color='black')
-                axs[0,cc].plot(self.input_concentration, f_hat, '--', label='Fit')
-                axs[0,cc].set_xlabel('[Input Monomer]')
-                axs[0,cc].set_title('Fitting target-{}: MSE {}'.format(j, round(self.mse(f_hat, self.f_targets[j]), 3)))
-                axs[0,cc].set_xscale('log')
-                axs[0,cc].legend()
+                    # compute dimers
+                    dimer_names = self.Knames[dimer_inds]
+                    output_dimers = self.g1(c0_acc, K)[:,dimer_inds]
+                    max_od = np.max(output_dimers, axis=0)
 
-                # compute dimers
-                dimer_names = self.Knames[dimer_inds]
-                output_dimers = self.g1(c0_acc, K)[:,dimer_inds]
-                max_od = np.max(output_dimers, axis=0)
+                    if normalize_plot:
+                        axs[1,cc].plot(self.input_concentration, output_dimers/max_od, label=dimer_names)
+                        axs[1,cc].set_title('[Output Dimers (Max-Normalized)]')
+                        y = theta[dimer_inds]*max_od
+                    else:
+                        axs[1,cc].plot(self.input_concentration, output_dimers, label=dimer_names)
+                        axs[1,cc].set_title('[Output Dimers]')
+                        axs[1,cc].set_yscale('log')
+                        y = theta[dimer_inds]
 
-                if normalize_plot:
-                    axs[1,cc].plot(self.input_concentration, output_dimers/max_od, label=dimer_names)
-                    axs[1,cc].set_title('[Output Dimers (Max-Normalized)]')
-                    y = theta[dimer_inds]*max_od
-                else:
-                    axs[1,cc].plot(self.input_concentration, output_dimers, label=dimer_names)
-                    axs[1,cc].set_title('[Output Dimers]')
-                    axs[1,cc].set_yscale('log')
-                    y = theta[dimer_inds]
+                    axs[1,cc].set_xscale('log')
+                    axs[1,cc].set_xlabel('[Input Monomer]')
+                    axs[1,cc].legend()
 
-                axs[1,cc].set_xscale('log')
-                axs[1,cc].set_xlabel('[Input Monomer]')
-                axs[1,cc].legend()
+                    x = np.flipud(np.argsort(y))
+                    y_sorted = y[x]
+                    xseq = np.arange(len(x))
+                    axs[2,cc].bar(xseq, y_sorted, color=default_colors[x])
+                    axs[2,cc].set_xticks(xseq)
+                    axs[2,cc].set_xticklabels(dimer_names[x])
+                    if normalize_plot:
+                        axs[2,cc].set_title('Normalized Dimer Weights')
+                    else:
+                        axs[2,cc].set_title('Dimer Weights')
+                        axs[2,cc].set_yscale('log')
 
-                x = np.flipud(np.argsort(y))
-                y_sorted = y[x]
-                xseq = np.arange(len(x))
-                axs[2,cc].bar(xseq, y_sorted, color=default_colors[x])
-                axs[2,cc].set_xticks(xseq)
-                axs[2,cc].set_xticklabels(dimer_names[x])
-                if normalize_plot:
-                    axs[2,cc].set_title('Normalized Dimer Weights')
-                else:
-                    axs[2,cc].set_title('Dimer Weights')
-                    axs[2,cc].set_yscale('log')
-
-            fig.savefig(os.path.join(output_dir, 'optimization_results.pdf'), format='pdf')
-            plt.close()
+                fig.savefig(os.path.join(outdir, 'plot{}.pdf'.format(n)), format='pdf')
+                plt.close()
 
             # plot output dimers
             if self.acc_opt=='outer':

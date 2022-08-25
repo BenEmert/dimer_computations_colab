@@ -65,6 +65,33 @@ def minimize_wrapper(problem, algorithm, termination, seed=None, save_history=Tr
 
     return opt_list
 
+
+def plot_targets(output_dir, inputs, targets, fits=[], n_plots=4):
+    os.makedirs(output_dir, exist_ok=True)
+    n_targets = len(targets)
+    nrows = min(n_plots, int(np.ceil(n_targets/n_plots)) )
+    ncols = min(n_plots, int(np.ceil(n_targets/nrows)) )
+    N_subs = int(np.ceil(n_targets / (nrows*ncols)))
+    cc = -1
+    for n in range(N_subs):
+        fig, axs = plt.subplots(nrows=nrows, ncols=ncols, figsize = [ncols*5,nrows*3], squeeze=False, sharex=True, sharey=True)
+        plt.subplots_adjust(left=None, bottom=None, right=None, top=None, wspace=0.4, hspace=0.4)
+        for i in range(nrows):
+            for j in range(ncols):
+                cc += 1
+                if cc < n_targets:
+                    axs[i,j].plot(inputs, targets[cc], label='target', color='black', linewidth=4)
+                    try:
+                        axs[i,j].plot(inputs, fits[cc], color=default_colors[0], label='fits', linewidth=1)
+                    except:
+                        pass
+                    axs[i,j].set_xscale('log')
+                    axs[i,j].legend()
+                    axs[-1,j].set_xlabel('[Input Monomer]')
+
+        fig.savefig(os.path.join(output_dir,'target_plot{}.pdf'.format(n)), format='pdf')
+        plt.close()
+
 class AnalyzePymoo:
     def __init__(self, opt_list,
                     xnames = None,
@@ -118,6 +145,9 @@ class AnalyzePymoo:
         inds = np.argsort(self.Fall.reshape(-1))
         self.Fall_ordered = self.Fall.reshape(-1)[inds]
         self.Xall_ordered = self.Xall.reshape(-1,self.Xall.shape[-1])[inds]
+
+        self.Fmin = np.min(self.Fall_ordered)
+        self.Fmax = np.max(self.Fall_ordered)
 
     def write_info(self, writedir):
         dump = {'X': self.X,
@@ -195,6 +225,16 @@ class AnalyzePymoo:
         X = Xset[np.random.choice(Nmax, size=N, replace=False)]
         return X
 
+    def sample_X_from_grid(self, p_high=100, p_low=0, n=2):
+        f_low = self.Fmin + (p_low/100)*(self.Fmax-self.Fmin)
+        f_high = self.Fmin + (p_high/100)*(self.Fmax-self.Fmin)
+
+        Xset = self.Xall_ordered[(self.Fall_ordered<=f_high) & (self.Fall_ordered>=f_low)]
+        Nmax = Xset.shape[0]
+        N = min(Nmax, n)
+        X = Xset[np.random.choice(Nmax, size=N, replace=False)]
+        return X
+
     def compare_params(self, plotdir, nm='a0'):
 
         N_plot_params = min(10, self.n_params)
@@ -246,7 +286,6 @@ class AnalyzePymoo:
         if len(self.truth):
             for c in range(self.X.shape[-1]):
                 axs.axhline(y=self.truth[c], color=default_colors[c], linestyle='--', label='True')
-
 
         axs.legend()
         fig.savefig(os.path.join(plotdir, 'X_convergence.pdf'), format='pdf')
