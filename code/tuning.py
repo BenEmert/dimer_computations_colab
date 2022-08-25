@@ -251,7 +251,7 @@ class TuneK:
 
             # make some plots with the optimal K
             output_dir = os.path.join(self.output_dir, extra_nm)
-            info_dict = self.outer_opt(k_opt, make_plots=False)[0] # returns list of optimization results for K
+            info_dict = self.outer_opt(k_opt, make_plots=False, verbose=False)[0] # returns list of optimization results for K
             info_dict['K'] = k_opt
             self.plot_many_fits(output_dir, [info_dict])
 
@@ -261,7 +261,7 @@ class TuneK:
                 k_examples = analyzeOpt.sample_X_from_grid(p_low=percentile_list[j], p_high=percentile_list[j+1], n=n_examples)
                 param_list = []
                 for K in k_examples:
-                    output_list = self.outer_opt(K, make_plots=False) # returns list of optimization results for K
+                    output_list = self.outer_opt(K, make_plots=False, verbose=False) # returns list of optimization results for K
                     info_dict = output_list[0] # just use the first one
                     info_dict['K'] = K
                     param_list.append(info_dict)
@@ -278,7 +278,7 @@ class TuneK:
             k_examples = ap.sample_X_from_grid(p_low=percentile_list[j], p_high=percentile_list[j+1], n=n_examples)
             param_list = []
             for K in k_examples:
-                output_list = self.outer_opt(K, make_plots=False) # returns list of optimization results for K
+                output_list = self.outer_opt(K, make_plots=False, verbose=False) # returns list of optimization results for K
                 info_dict = output_list[0] # just use the first one
                 info_dict['K'] = K
                 param_list.append(info_dict)
