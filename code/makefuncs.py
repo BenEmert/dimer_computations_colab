@@ -61,7 +61,8 @@ def bump_on(bump_starts, n_input_samples):
         f_targets[n,i_low:] = 1 # assign the bump
     return f_targets
 
-def bumps_all(n_max_switches=2, n_switch_points=5, bounds=(-3,3)):
+def bumps_all(n_max_switches=2, n_switch_points=5, bounds=(0,1)):
+    # note: bounds are arbitrary
 
     switch_grid = np.linspace(bounds[0], bounds[1], n_switch_points+2) # always includes bounds[0] and bounds[1] by default (+2 for endpoints)
 
