@@ -82,7 +82,7 @@ def plot_targets(output_dir, inputs, targets, fits=[], n_plots=4):
                 if cc < n_targets:
                     axs[i,j].plot(inputs, targets[cc], label='target', color='black', linewidth=4)
                     try:
-                        axs[i,j].plot(inputs, fits[cc], color=default_colors[0], label='fits', linewidth=1)
+                        axs[i,j].plot(inputs, fits[cc].T, '--', color=default_colors[0], linewidth=2)
                     except:
                         pass
                     axs[i,j].set_xscale('log')
@@ -182,7 +182,7 @@ class AnalyzePymoo:
             self.plot_params(self.X[n], pdir)
 
 
-    def plot_robustness(self, plotdir, percentile_list=[1, 10, 50, 100]):
+    def plot_robustness(self, plotdir, percentile_list=[0, 1, 10, 50, 100]):
 
         #$ plot CDF
         fig, ax = plt.subplots(nrows=1, ncols=1, figsize = [8,8])
@@ -199,12 +199,12 @@ class AnalyzePymoo:
         plt.close()
 
         ## plot bivariate scatter plots of parameter choices at different thresholds of quality
-        thresh_list = np.percentile(self.Fall_ordered, percentile_list)
-        for j in range(len(percentile_list)):
-            t = thresh_list[j]
+        # thresh_list = np.percentile(self.Fall_ordered, percentile_list)
+        for j in range(len(percentile_list)-1):
+            f_low, f_high = self.get_thresh_F(p_low=percentile_list[j], p_high=percentile_list[j+1])
             df = pd.DataFrame()
             for k in range(self.Fall.shape[0]):
-                Xset_k = self.Xall[k,(self.Fall[k]<=thresh_list[j]).squeeze()]
+                Xset_k = self.Xall[k,((self.Fall[k]<=f_high) & (self.Fall[k]>=f_low)).squeeze()]
                 df_k = pd.DataFrame(Xset_k, columns=self.xnames)
                 df_k['run'] = k
                 df = pd.concat([df,df_k])
@@ -225,11 +225,15 @@ class AnalyzePymoo:
         X = Xset[np.random.choice(Nmax, size=N, replace=False)]
         return X
 
-    def sample_X_from_grid(self, p_high=100, p_low=0, n=2):
+    def get_thresh_F(self, p_high=100, p_low=0):
         f_low = self.Fmin + (p_low/100)*(self.Fmax-self.Fmin)
         f_high = self.Fmin + (p_high/100)*(self.Fmax-self.Fmin)
+        return f_low, f_high
 
+    def sample_X_from_grid(self, p_high=100, p_low=0, n=2):
+        f_low, f_high = self.get_thresh_F(p_high, p_low)
         Xset = self.Xall_ordered[(self.Fall_ordered<=f_high) & (self.Fall_ordered>=f_low)]
+
         Nmax = Xset.shape[0]
         N = min(Nmax, n)
         X = Xset[np.random.choice(Nmax, size=N, replace=False)]

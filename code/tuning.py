@@ -249,20 +249,49 @@ class TuneK:
             analyzeOpt = AnalyzePymoo([res], self.Knames, truth=self.truth['K'])
             analyzeOpt.make_plots(os.path.join(self.output_dir, extra_nm))
 
+            # make some plots with the optimal K
+            output_dir = os.path.join(self.output_dir, extra_nm)
+            info_dict = self.outer_opt(k_opt, make_plots=False)[0] # returns list of optimization results for K
+            info_dict['K'] = k_opt
+            self.plot_many_fits(output_dir, [info_dict])
+
             percentile_list = [0, 1, 10, 50, 100]
-            n_examples = 3
+            n_examples = 10
             for j in range(len(percentile_list)-1):
-                k_examples = analyzeOpt.sample_X_from_percentile(p_low=percentile_list[j], p_high=percentile_list[j+1], n=n_examples)
-                for n in range(k_examples.shape[0]):
-                    self.loss_k(k_examples[n], final_run=True, nxsurface=self.nxsurface,
-                    plot_surface=plot_surface,
-                    extra_nm='PercentileSims_run{}/Percentile{}/example{}'.format(ns,percentile_list[j+1],n))
+                k_examples = analyzeOpt.sample_X_from_grid(p_low=percentile_list[j], p_high=percentile_list[j+1], n=n_examples)
+                param_list = []
+                for K in k_examples:
+                    output_list = self.outer_opt(K, make_plots=False) # returns list of optimization results for K
+                    info_dict = output_list[0] # just use the first one
+                    info_dict['K'] = K
+                    param_list.append(info_dict)
+
+                # make plots of this list of parameters
+                output_dir = os.path.join(self.output_dir, 'PercentileSims_run{}/Percentile{}'.format(ns,percentile_list[j+1]))
+                self.plot_many_fits(output_dir, param_list)
 
         # plot multi-start summary
         new_plot_dirname = os.path.join(self.output_dir,'Final_Summary')
         ap = AnalyzePymoo(res_list, self.Knames, truth=self.truth['K'])
         ap.make_plots(new_plot_dirname)
+        for j in range(len(percentile_list)-1):
+            k_examples = ap.sample_X_from_grid(p_low=percentile_list[j], p_high=percentile_list[j+1], n=n_examples)
+            param_list = []
+            for K in k_examples:
+                output_list = self.outer_opt(K, make_plots=False) # returns list of optimization results for K
+                info_dict = output_list[0] # just use the first one
+                info_dict['K'] = K
+                param_list.append(info_dict)
 
+            # make plots of this list of parameters
+            output_dir = os.path.join(self.output_dir, 'PercentileSims_All/Percentile{}'.format(percentile_list[j+1]))
+            self.plot_many_fits(output_dir, param_list)
+
+            # do percentile sims
+            for n in range(k_examples.shape[0]):
+                self.loss_k(k_examples[n], final_run=True, nxsurface=self.nxsurface,
+                plot_surface=plot_surface,
+                extra_nm='PercentileSims_All/Percentile{}/example{}'.format(percentile_list[j+1],n))
 
         return res
 
@@ -383,16 +412,7 @@ class TuneK:
                     j += 1
                     if j >= self.n_targets:
                         continue
-                    if self.acc_opt=='inner':
-                        c0_acc = c0_acc_best[j]
-                    else:
-                        c0_acc = c0_acc_best
-
-                    if self.w_opt=='inner':
-                        theta = theta_best[j]
-                    else:
-                        theta = theta_best
-
+                    c0_acc, theta = self.get_params(c0_acc_best, theta_best, j)
                     axs[0,cc].plot(self.input_concentration, self.f_targets[j], label='Target', color='black')
                     f_hat = self.predict(K, c0_acc, theta)
                     axs[0,cc].plot(self.input_concentration, f_hat, '--', color=default_colors[0])
@@ -748,3 +768,37 @@ class TuneK:
 
         f_hat = self.g2(dimers, theta)
         return f_hat
+
+    def predict_many(self, param_list):
+
+        fits = []
+        for p in param_list:
+            K = p['K']
+            c0_acc_best = p['c0_acc_best']
+            theta_best = p['theta_best']
+
+            fits_p = []
+            for j in range(self.n_targets):
+                c0_acc, theta = self.get_params(c0_acc_best, theta_best, j)
+                f_hat = self.predict(K, c0_acc, theta)
+                fits_p.append(f_hat)
+
+            fits.append(np.array(fits_p))
+        foo = np.atleast_3d(np.array(fits)).transpose(1,0,2) # N targets x N param sets x Input Discretization
+        return foo
+
+    def get_params(self, c0_acc, theta, j):
+        if self.acc_opt=='inner':
+            c0_acc = c0_acc[j]
+        if self.w_opt=='inner':
+            theta = theta[j]
+        return c0_acc, theta
+
+    def plot_many_fits(self, output_dir, param_list):
+        os.makedirs(output_dir, exist_ok=True)
+
+        # generate list of fits
+        fits = self.predict_many(param_list)
+
+        # plot fits
+        plot_targets(output_dir, self.input_concentration, self.f_targets, fits)
