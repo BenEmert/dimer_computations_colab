@@ -198,16 +198,24 @@ class TuneK:
         self.param_ub = [self.param_ub]*self.num_rxns
 
 
-    def optimize_binding(self, popsize=15, maxiter=10, seed=None, nstarts=1, polish=False, plot_surface=False, **kwargs):
+    def diff(self, x, ilow, ihigh):
+        return x[ihigh] - x[ilow]
+
+    def optimize_binding(self, popsize=15, maxiter=10, seed=None, nstarts=1, polish=False, plot_surface=False, do_constraints=True, **kwargs):
+
+        constr_iq = []
+        if do_constraints:
+            ind_list = get_diag_inds(n_input=1, n_accesory=self.m-1, m = self.m)[1:] # ignore first homodimer
+            constr_iq = [functools.partial(self.diff, ilow=ind_list[j-1], ihigh=ind_list[j])
+                            for j in range(1,len(ind_list)) ]
 
         n_var = len(self.param_lb)
-
         problem = FunctionalProblem(
             n_var=n_var,
             objs=self.loss_k,
             xl=self.param_lb,
             xu=self.param_ub,
-            constr_ieq=[])
+            constr_ieq=constr_iq)
 
         termination = SingleObjectiveDefaultTermination(
             x_tol=1e-6,

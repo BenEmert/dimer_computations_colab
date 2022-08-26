@@ -221,6 +221,17 @@ def make_C0_grid(m=2, M0_min=-3, M0_max=3, num_conc=10):
     M0 = make_M0_grid(m=m, M0_min=M0_min, M0_max=M0_max, num_conc=num_conc)
     return np.hstack((M0, np.zeros((M0.shape[0], num_dimers))))
 
+def get_diag_inds(n_input = 2, n_accesory = 2, m = None, rxn_ordered = True):
+    '''Get indices for the diagonal elements of an upper triangular matrix
+    when the whole upper-triangular matrix is re-written as flattened 1d-array.'''
+    Knames = np.array(make_Kij_names(n_input, n_accesory, m, rxn_ordered))
+    ind_list = []
+    for j in range(m):
+        Knm = 'K{}{}'.format(j+1,j+1)
+        ind_list.append(np.where(Knames==Knm))
+
+    return np.array(ind_list).squeeze()
+
 def make_K_matrix(K_vec, m):
     """
     Create Kij names for ordering parameters
