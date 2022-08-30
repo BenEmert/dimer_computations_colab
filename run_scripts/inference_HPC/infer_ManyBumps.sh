@@ -15,10 +15,10 @@
 round_dir="/groups/astuart/mlevine/dimer_computations_colab/results/ManyBumps_singlebeta_constrained"
 
 echo "Sending results to $round_dir"
-srun --ntasks=1 python3 bump_inference_tests_ainner_ManyBumps.py --single_beta 1 --w_opt inner --maxiter_O 10 --popsize_O 3 --maxiter_K 10 --popsize_K 25 --base_dir "$round_dir/m3_inner10x3_outer10x25" &
-srun --ntasks=1 python3 bump_inference_tests_ainner_ManyBumps.py --single_beta 1 --w_opt inner --maxiter_O 10 --popsize_O 3 --maxiter_K 25 --popsize_K 10 --base_dir "$round_dir/m3_inner10x3_outer25x10" &
-srun --ntasks=1 python3 bump_inference_tests_ainner_ManyBumps.py --single_beta 1 --w_opt inner --maxiter_O 10 --popsize_O 10 --maxiter_K 10 --popsize_K 25 --base_dir "$round_dir/m3_inner10x6_outer10x25" &
 srun --ntasks=1 python3 bump_inference_tests_ainner_ManyBumps.py --single_beta 1 --w_opt outer --maxiter_O 10 --popsize_O 3 --maxiter_K 10 --popsize_K 25 --base_dir "$round_dir/m3_inner10x3_outer10x25" &
-srun --ntasks=1 python3 bump_inference_tests_ainner_ManyBumps.py --single_beta 1 --w_opt outer --maxiter_O 10 --popsize_O 3 --maxiter_K 25 --popsize_K 10 --base_dir "$round_dir/m3_inner10x3_outer25x10" &
-srun --ntasks=1 python3 bump_inference_tests_ainner_ManyBumps.py --single_beta 1 --w_opt outer --maxiter_O 10 --popsize_O 10 --maxiter_K 10 --popsize_K 25 --base_dir "$round_dir/m3_inner10x6_outer10x25"
+srun --ntasks=1 python3 bump_inference_tests_ainner_ManyBumps.py --single_beta 1 --w_opt outer --maxiter_O 10 --popsize_O 3 --maxiter_K 25 --popsize_K 25 --base_dir "$round_dir/m3_inner10x3_outer25x25" &
+srun --ntasks=1 python3 bump_inference_tests_ainner_ManyBumps.py --single_beta 1 --w_opt outer --maxiter_O 10 --popsize_O 10 --maxiter_K 10 --popsize_K 25 --base_dir "$round_dir/m3_inner10x10_outer10x25" &
+srun --ntasks=1 python3 bump_inference_tests_ainner_ManyBumps.py --single_beta 1 --w_opt outer --maxiter_O 10 --popsize_O 3 --maxiter_K 10 --popsize_K 25 --base_dir "$round_dir/m3_inner10x3_outer10x25" &
+srun --ntasks=1 python3 bump_inference_tests_ainner_ManyBumps.py --single_beta 1 --w_opt outer --maxiter_O 10 --popsize_O 3 --maxiter_K 25 --popsize_K 25 --base_dir "$round_dir/m3_inner10x3_outer25x25" &
+srun --ntasks=1 python3 bump_inference_tests_ainner_ManyBumps.py --single_beta 1 --w_opt outer --maxiter_O 10 --popsize_O 10 --maxiter_K 10 --popsize_K 25 --base_dir "$round_dir/m3_inner10x10_outer10x25"
 wait
