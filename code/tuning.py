@@ -745,7 +745,7 @@ class TuneK:
             self.n_var = self.m-1
 
         self.algorithm = DE(CR=0.9,
-            pop_size=self.opt_settings_outer['popsize']*self.n_var)
+            pop_size=(self.m-1) * self.opt_settings_outer['popsize'])
 
     def g1(self, c0_acc, K, apply_power_K=True, apply_power_c0=True):
         # for 1d -> 1d predictions, we have each row of C0 being the same EXCEPT in its first column,
