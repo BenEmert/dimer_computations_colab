@@ -8,7 +8,7 @@ import scipy.interpolate
 import numpy as np
 from pdb import set_trace as bp
 
-def set_target_library(n_input_samples=10, target_lib_name="SinCos", target_lib_file=None, bump_centers=[0.2, 0.4, 0.6], bump_width=2):
+def set_target_library(n_input_samples=10, target_lib_name="SinCos", target_lib_file=None, bump_centers=[0.2, 0.4, 0.6], bump_width=2, n_switches=2):
     '''Generate a library of functions to which we will fit or use to measure expressivity.'''
     if target_lib_name=='SinCos':
         x = np.linspace(0, 2*np.pi, n_input_samples)
@@ -17,7 +17,7 @@ def set_target_library(n_input_samples=10, target_lib_name="SinCos", target_lib_
 
         f_targets = np.vstack((target_function_sin, target_function_cos))
     elif target_lib_name=='bumps_all':
-        F = bumps_all()
+        F = bumps_all(n_switches)
         f_targets = interp_target(n_input_samples, F, kind='next')
     elif target_lib_name=='MetaClusters':
         with open(target_lib_file, 'rb') as f:
@@ -61,12 +61,12 @@ def bump_on(bump_starts, n_input_samples):
         f_targets[n,i_low:] = 1 # assign the bump
     return f_targets
 
-def bumps_all(n_max_switches=2, n_switch_points=5, bounds=(0,1)):
+def bumps_all(n_switches=1, n_switch_points=5, bounds=(0,1)):
     # note: bounds are arbitrary
 
     switch_grid = np.linspace(bounds[0], bounds[1], n_switch_points+2) # always includes bounds[0] and bounds[1] by default (+2 for endpoints)
 
-    for n_lam in range(n_max_switches+1):
+    for n_lam in range(n_switches+1):
         if n_lam==0:
             f_off = np.zeros_like(switch_grid)
             f_on = np.ones_like(switch_grid)

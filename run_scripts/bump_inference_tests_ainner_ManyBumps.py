@@ -24,15 +24,13 @@ from time import time
 parser0 = argparse.ArgumentParser()
 ## Run settings
 parser0.add_argument('--n_rounds', default=1, type=int)
-# parser0.add_argument('--n_targets_per_round', default=1, type=int)
-parser0.add_argument('--bump_center', default=0.8, type=float) # relative across logX input domain
-parser0.add_argument('--bump_width', default=1, type=int) # units of discretization
 FLAGS_run, __ = parser0.parse_known_args()
 
 parser1 = argparse.ArgumentParser()
 ## Settings for TuneK
 parser1.add_argument('--base_dir', default='../results/manyBumps/a-inner_w-outer/', type=str) # base directory for output
 parser1.add_argument('--target_lib_name', default='bumps_all', type=str) # Name for target library
+parser0.add_argument('--n_switches', default=2, type=int) # number of switches in bump library
 parser1.add_argument('--target_lib_file', default='../data/metaclusters/hc_3M_metaClusterBasis_thresh3.npy', type=str) # file for reading target functions
 parser1.add_argument('--m', default=3, type=int) #number of total monomers
 parser1.add_argument('--n_input_samples', default=40, type=int) #Number of values to titrate the input monomer species. Values spaced evenly on a log10 scale
