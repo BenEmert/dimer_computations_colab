@@ -30,7 +30,7 @@ parser1 = argparse.ArgumentParser()
 ## Settings for TuneK
 parser1.add_argument('--base_dir', default='../results/manyBumps/a-inner_w-outer/', type=str) # base directory for output
 parser1.add_argument('--target_lib_name', default='bumps_all', type=str) # Name for target library
-parser0.add_argument('--n_switches', default=2, type=int) # number of switches in bump library
+parser1.add_argument('--n_switches', default=2, type=int) # number of switches in bump library
 parser1.add_argument('--target_lib_file', default='../data/metaclusters/hc_3M_metaClusterBasis_thresh3.npy', type=str) # file for reading target functions
 parser1.add_argument('--m', default=3, type=int) #number of total monomers
 parser1.add_argument('--n_input_samples', default=40, type=int) #Number of values to titrate the input monomer species. Values spaced evenly on a log10 scale
