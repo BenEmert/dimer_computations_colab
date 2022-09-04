@@ -49,6 +49,7 @@ class TuneK:
     def __init__(self,
                     base_dir = '../optimization_results',
                     target_lib_name = 'SinCos',
+                    n_switches = 2, # number of switches for bump library
                     target_lib_file = None,
                     acc_opt = 'inner',
                     w_opt = 'inner',
@@ -132,7 +133,7 @@ class TuneK:
 
         self.make_output_dir()
 
-        self.f_targets = set_target_library(n_input_samples=n_input_samples, target_lib_name=target_lib_name, target_lib_file=target_lib_file)
+        self.f_targets = set_target_library(n_input_samples=n_input_samples, target_lib_name=target_lib_name, target_lib_file=target_lib_file, n_switches=n_switches)
         self.n_targets = self.f_targets.shape[0]
         self.f_targets_max_sq = np.max(self.f_targets, axis=1)**2
         self.f_targets_max_sq[self.f_targets_max_sq==0] = 1 #avoid divide by zero
