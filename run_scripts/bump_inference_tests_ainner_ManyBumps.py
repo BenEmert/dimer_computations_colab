@@ -69,7 +69,7 @@ def opt_wrapper(opt_setts, n_rounds=1, bump_center=0.5, bump_width=2, **kwargs):
 
     for c in range(n_rounds):
         # next, perform full optimization over K and a, theta
-        FOO.optimize_binding(seed=c, **opt_setts)
+        FOO.optimize_binding(seed=None, **opt_setts)
     return
 
 ######
