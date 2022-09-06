@@ -13,12 +13,10 @@ from scipy.optimize import minimize, brute, differential_evolution
 
 from pymoo.problems.functional import FunctionalProblem
 from pymoo.optimize import minimize
-from opt_utils import *
 from pymoo.util.termination.default import SingleObjectiveDefaultTermination
 from pymoo.algorithms.soo.nonconvex.de import DE
 from pymoo.operators.sampling.lhs import LHS
-
-from opt_utils import AnalyzePymoo
+from opt_utils import *
 
 # %load_ext watermark
 
@@ -54,6 +52,7 @@ class TuneK:
                     acc_opt = 'inner',
                     w_opt = 'inner',
                     single_beta = False,
+                    one_scale = False,
                     opt_settings_outer = {}, # use default settings for differential evolution
                     m = 3,
                     n_input_samples = 40, #discretization of first monomer...time complexity scales linearly w.r.t. this parameter
@@ -127,6 +126,7 @@ class TuneK:
         self.setup()
 
         self.single_beta = single_beta
+        self.one_scale = one_scale
         self.acc_opt = acc_opt
         self.w_opt = w_opt
         self.lsq_linear_method = lsq_linear_method
@@ -331,8 +331,11 @@ class TuneK:
                 for j in range(nx):
                     # treat xv[i,j], yv[i,j]
                     c0_acc = np.array([xv[i,j], yv[i,j]])
-                    if self.acc_opt=='inner' and self.w_opt=='inner':
+                    if self.acc_opt=='inner' and self.w_opt=='inner' and not(self.one_scale):
                         _, mse_total = self.inner_opt(c0_acc, K, j_target=k)
+                    if self.acc_opt=='inner' and self.w_opt=='inner' and self.one_scale:
+                        c0_acc_full[k] = c0_acc
+                        _, mse_total, mse_list = self.inner_opt(c0_acc_full.reshape(-1), K)
                     elif self.acc_opt=='inner' and self.w_opt=='outer':
                         c0_acc_full[k] = c0_acc
                         _, mse_total, mse_list = self.inner_opt(c0_acc_full.reshape(-1), K)
@@ -522,17 +525,23 @@ class TuneK:
 
         return mse_best
 
-    def try_lsq_linear(self, x, y):
-        try:
-            foo = scipy.optimize.lsq_linear(x, y, bounds=self.lsq_bounds, method=self.lsq_linear_method)
-        except:
-            print('BVLS tolerance not met. Switching to TRF solver.')
-            foo = scipy.optimize.lsq_linear(x, y, bounds=self.lsq_bounds, method='trf')
+    def try_lsq_linear(self, x, y, scale=None, fit=True):
+
+        if fit:
+            try:
+                foo = scipy.optimize.lsq_linear(x, y, bounds=self.lsq_bounds, method=self.lsq_linear_method)
+            except:
+                print('BVLS tolerance not met. Switching to TRF solver.')
+                foo = scipy.optimize.lsq_linear(x, y, bounds=self.lsq_bounds, method='trf')
+        else:
+            fun = y - scale*x
+            foo = DotDict(fun=fun, x=scale)
+
         return foo
 
-    def find_best_beta(self, x, y):
+    def find_best_beta(self, x, y, scale=None, fit=True):
         n_betas = x.shape[1]
-        foo_list = [self.try_lsq_linear(x[:,j].reshape(-1,1), y) for j in range(n_betas)]
+        foo_list = [self.try_lsq_linear(x[:,j].reshape(-1,1), y, scale=scale, fit=fit) for j in range(n_betas)]
         j_best = 0
         mse_best = np.Inf
         for j in range(n_betas):
@@ -547,16 +556,42 @@ class TuneK:
         foo_best.x = beta
         return foo_best
 
-    def lsq_linear_wrapper(self, x, y):
+    def lsq_linear_wrapper(self, x, y, scale=None, one_scale=False):
         if self.single_beta:
-            foo = self.find_best_beta(x, y)
+            foo = self.find_best_beta(x, y, scale=scale, fit=not(one_scale))
         else:
             foo = self.try_lsq_linear(x, y)
         return foo
 
     def inner_opt(self, c0_acc, K, j_target=None, error_only=False):
         '''This function computes optimal linear weights and the associated errors incurred for these optimal weights.'''
-        if self.acc_opt=='inner' and self.w_opt=='inner':
+
+        if self.acc_opt=='inner' and self.w_opt=='inner' and self.one_scale and self.single_beta:
+
+            dimers_all = []
+            for j in range(self.n_targets):
+                i_low = j*(self.m-1)
+                i_high = i_low + (self.m-1)
+                dimers_j = self.g1(c0_acc[i_low:i_high], K) # 40 x 9
+                dimers_all += [dimers_j]
+            # targets_all = self.f_targets.reshape(-1) #(40*n,)
+            dimers_all = np.vstack(dimers_all)
+
+            theta_star = np.zeros((self.n_targets, dimers_j.shape[1]))
+            mse_total = 0
+            mse_list = [0 for j in range(self.n_targets)]
+            for j in range(self.n_targets):
+                foo = self.lsq_linear_wrapper(x=dimers_all, y=self.f_targets[j], scale=c0_acc[-1], one_scale=True)
+                theta_star[j] = foo.x
+                mse_j = np.sum(foo.fun**2) / self.n_input_samples / self.f_targets_max_sq[j]
+                mse_list[j] = mse_j
+                mse_total += mse_j # errs_j is l2 norm, so square it, then divide by N to get MSE
+            if error_only:
+                return mse_total
+            else:
+                return theta_star, mse_total, mse_list
+
+        elif self.acc_opt=='inner' and self.w_opt=='inner' and not(self.one_scale):
             dimers = self.g1(c0_acc, K) # 40 x 9
             foo = self.lsq_linear_wrapper(x=dimers, y=self.f_targets[j_target])
             theta_star_j = foo.x
@@ -608,7 +643,7 @@ class TuneK:
 
     def set_inner_problems(self, K):
         self.inner_problem_list = []
-        if self.acc_opt=='inner' and self.w_opt=='inner':
+        if self.acc_opt=='inner' and self.w_opt=='inner' and not(self.one_scale):
             for j_target in range(self.n_targets):
                 f_obj = functools.partial(self.inner_opt, K=K, j_target=j_target, error_only=True)
                 problem = FunctionalProblem(
@@ -618,13 +653,18 @@ class TuneK:
                     xu=self.acc_ub_list)
                 self.inner_problem_list.append(problem)
 
-        elif self.acc_opt=='inner' and self.w_opt=='outer':
+        elif self.acc_opt=='inner':
             f_obj = functools.partial(self.inner_opt, K=K, error_only=True)
+            xl = [self.acc_lb]*(self.m-1)*self.n_targets
+            xu = [self.acc_ub]*(self.m-1)*self.n_targets
+            if self.w_opt=='inner' and self.one_scale and self.single_beta:
+                xl += [-10]
+                xu += [10]
             problem = FunctionalProblem(
                 n_var=self.n_var,
                 objs=f_obj,
-                xl=[self.acc_lb]*(self.m-1)*self.n_targets,
-                xu=[self.acc_ub]*(self.m-1)*self.n_targets)
+                xl=xl,
+                xu=xu)
             self.inner_problem_list.append(problem)
 
         elif self.acc_opt=='outer' and self.w_opt=='inner':
@@ -654,21 +694,22 @@ class TuneK:
 
     def outer_opt(self, K, verbose=True, make_plots=True):
         self.set_inner_problems(K)
-        if self.acc_opt=='inner' and self.w_opt=='inner':
-            opt_list = []
-            for j in range(self.n_targets):
-                try:
-                    truth = self.truth['a0'][j]
-                except:
-                    truth = self.truth['a0']
-                problem = self.inner_problem_list[j]
-                opt_list_j = self.f_min_outer(problem, truth=truth, plot_dirname=os.path.join(self.output_dir,'inner_opt_j{}'.format(j)), verbose=verbose, make_plots=make_plots)
-                opt_list.append(opt_list_j)
-            output_list = self.make_opt_output_list(opt_list, K)
-        elif self.acc_opt=='inner' and self.w_opt=='outer':
-            problem = self.inner_problem_list[0]
-            opt_list = self.f_min_outer(problem, truth=self.truth['a0'], plot_dirname=os.path.join(self.output_dir,'inner_opt'), verbose=verbose, make_plots=make_plots)
-            output_list = self.make_opt_output_list(opt_list, K)
+        if self.acc_opt=='inner':
+            if self.w_opt=='inner' and not(self.one_scale):
+                opt_list = []
+                for j in range(self.n_targets):
+                    try:
+                        truth = self.truth['a0'][j]
+                    except:
+                        truth = self.truth['a0']
+                    problem = self.inner_problem_list[j]
+                    opt_list_j = self.f_min_outer(problem, truth=truth, plot_dirname=os.path.join(self.output_dir,'inner_opt_j{}'.format(j)), verbose=verbose, make_plots=make_plots)
+                    opt_list.append(opt_list_j)
+                output_list = self.make_opt_output_list(opt_list, K)
+            elif self.w_opt=='outer' or self.one_scale:
+                problem = self.inner_problem_list[0]
+                opt_list = self.f_min_outer(problem, truth=self.truth['a0'], plot_dirname=os.path.join(self.output_dir,'inner_opt'), verbose=verbose, make_plots=make_plots)
+                output_list = self.make_opt_output_list(opt_list, K)
         elif self.acc_opt=='outer' and self.w_opt=='inner':
             problem = self.inner_problem_list[0]
             opt_list = self.f_min_outer(problem, truth=self.truth['a0'], plot_dirname=os.path.join(self.output_dir,'inner_opt'), verbose=verbose, make_plots=make_plots)
@@ -679,41 +720,50 @@ class TuneK:
 
     def make_opt_output_list(self, opt_list, K):
         output_list = []
-        if self.acc_opt=='inner' and self.w_opt=='inner':
-            n_opts = len(opt_list[0])
-            for n in range(n_opts):
-                mse_best = 0
-                mse_list_best = []
-                c0_acc_best = np.zeros((self.n_targets, self.m-1))
-                theta_best = np.zeros((self.n_targets, self.n_dimers))
-                for j in range(self.n_targets):
-                    opt = opt_list[j][n]
-                    c0_acc_best_j = opt.X
+        if self.acc_opt=='inner':
+            if self.w_opt=='inner' and not(self.one_scale):
+                n_opts = len(opt_list[0])
+                for n in range(n_opts):
+                    mse_best = 0
+                    mse_list_best = []
+                    c0_acc_best = np.zeros((self.n_targets, self.m-1))
+                    theta_best = np.zeros((self.n_targets, self.n_dimers))
+                    for j in range(self.n_targets):
+                        opt = opt_list[j][n]
+                        c0_acc_best_j = opt.X
+                        # rerun the best run to get more details
+                        theta_best_j, mse_best_j = self.inner_opt(c0_acc_best_j, K, j)
+                        mse_list_best.append(mse_best_j)
+                        mse_best += mse_best_j
+                        c0_acc_best[j,:] = c0_acc_best_j
+                        theta_best[j,:] = theta_best_j
+
+                    info_dict = {'mse_best': mse_best/self.n_targets,
+                                'mse_list_best': mse_list_best,
+                                 'c0_acc_best': c0_acc_best,
+                                 'theta_best': theta_best}
+                    output_list.append(info_dict)
+            elif self.w_opt=='outer' or self.one_scale:
+                for opt in opt_list:
+                    c0_acc_best = opt.X
                     # rerun the best run to get more details
-                    theta_best_j, mse_best_j = self.inner_opt(c0_acc_best_j, K, j)
-                    mse_list_best.append(mse_best_j)
-                    mse_best += mse_best_j
-                    c0_acc_best[j,:] = c0_acc_best_j
-                    theta_best[j,:] = theta_best_j
+                    theta_best, mse_total_best, mse_list_best = self.inner_opt(c0_acc_best, K)
+                    if self.w_opt=='inner' and self.one_scale:
+                        scale_best = c0_acc_best[-1]
+                        # convert c0_acc_best to a shaped array
+                        c0_acc_best = c0_acc_best[:-1].reshape(self.n_targets,-1)
+                    else:
+                        scale_best = 0
+                        # convert c0_acc_best to a shaped array
+                        c0_acc_best = c0_acc_best.reshape(self.n_targets,-1)
 
-                info_dict = {'mse_best': mse_best/self.n_targets,
-                            'mse_list_best': mse_list_best,
-                             'c0_acc_best': c0_acc_best,
-                             'theta_best': theta_best}
-                output_list.append(info_dict)
-        elif self.acc_opt=='inner' and self.w_opt=='outer':
-            for opt in opt_list:
-                c0_acc_best = opt.X
-                # rerun the best run to get more details
-                theta_best, mse_total_best, mse_list_best = self.inner_opt(c0_acc_best, K)
-                # convert c0_acc_best to a shaped array
-                c0_acc_best = c0_acc_best.reshape(self.n_targets,-1)
 
-                info_dict = {'mse_best': mse_total_best,
-                             'mse_list_best': mse_list_best,
-                             'c0_acc_best': c0_acc_best,
-                             'theta_best': theta_best}
-                output_list.append(info_dict)
+                    info_dict = {'mse_best': mse_total_best,
+                                 'mse_list_best': mse_list_best,
+                                 'c0_acc_best': c0_acc_best,
+                                 # 'scale_best': scale_best,
+                                 'theta_best': theta_best}
+                    output_list.append(info_dict)
         elif self.acc_opt=='outer' and self.w_opt=='inner':
             for opt in opt_list:
                 c0_acc_best = opt.X
@@ -742,6 +792,8 @@ class TuneK:
 
         if self.acc_opt=='inner' and self.w_opt=='outer':
             self.n_var = self.n_targets * (self.m-1)
+        elif self.acc_opt=='inner' and self.one_scale:
+            self.n_var = self.n_targets * (self.m-1) + 1
         else:
             self.n_var = self.m-1
 

@@ -37,6 +37,7 @@ parser1.add_argument('--n_input_samples', default=40, type=int) #Number of value
 parser1.add_argument('--acc_opt', default="inner", type=str)
 parser1.add_argument('--w_opt', default="inner", type=str)
 parser1.add_argument('--single_beta', default=0, type=int)
+parser1.add_argument('--one_scale', default=0, type=int)
 parser1.add_argument('--polish', default=0, type=int)
 parser1.add_argument('--lsq_linear_method', default='bvls', type=str)
 parser1.add_argument('--plot_inner_opt', default=0, type=int)
