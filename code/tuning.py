@@ -53,6 +53,7 @@ class TuneK:
                     w_opt = 'inner',
                     single_beta = False,
                     one_scale = False,
+                    scale_bounds = (-14,14), # in log10 space
                     opt_settings_outer = {}, # use default settings for differential evolution
                     m = 3,
                     n_input_samples = 40, #discretization of first monomer...time complexity scales linearly w.r.t. this parameter
@@ -111,6 +112,7 @@ class TuneK:
 
         self.param_lb = param_lb
         self.param_ub = param_ub
+        self.scale_bounds = scale_bounds
         self.opt_settings_outer = opt_settings_outer
         self.polish = polish
 
@@ -218,6 +220,18 @@ class TuneK:
             xu=self.param_ub,
             constr_ieq=constr_iq)
 
+        do_threading = False
+        if do_threading:
+            # n_threads = 4
+            # pool = ThreadPool(n_threads)
+
+            # the number of processes to be used
+            n_process = multiprocessing.cpu_count()
+            pool = multiprocessing.Pool(n_process)
+
+            problem.runner = pool.starmap
+            problem.func_eval = starmap_parallelized_eval
+
         termination = SingleObjectiveDefaultTermination(
             x_tol=1e-6,
             cv_tol=0.0,
@@ -237,6 +251,7 @@ class TuneK:
                 seed=ns,
                 save_history=True,
                 verbose=True)
+            print('Optimization time:', res.exec_time, 'seconds')
 
             if polish:
                 result = scipy.optimize.minimize(problem.objs[0],
@@ -563,7 +578,7 @@ class TuneK:
             foo = self.try_lsq_linear(x, y)
         return foo
 
-    def inner_opt(self, c0_acc, K, j_target=None, error_only=False):
+    def inner_opt(self, c0_acc, K, j_target=None, error_only=False, apply_power_theta=True):
         '''This function computes optimal linear weights and the associated errors incurred for these optimal weights.'''
 
         if self.acc_opt=='inner' and self.w_opt=='inner' and self.one_scale and self.single_beta:
@@ -581,7 +596,10 @@ class TuneK:
             mse_total = 0
             mse_list = [0 for j in range(self.n_targets)]
             for j in range(self.n_targets):
-                foo = self.lsq_linear_wrapper(x=dimers_all, y=self.f_targets[j], scale=c0_acc[-1], one_scale=True)
+                scale = c0_acc[-1]
+                if apply_power_theta:
+                    scale = np.float_power(10, scale)
+                foo = self.lsq_linear_wrapper(x=dimers_all, y=self.f_targets[j], scale=scale, one_scale=True)
                 theta_star[j] = foo.x
                 mse_j = np.sum(foo.fun**2) / self.n_input_samples / self.f_targets_max_sq[j]
                 mse_list[j] = mse_j
@@ -658,8 +676,8 @@ class TuneK:
             xl = [self.acc_lb]*(self.m-1)*self.n_targets
             xu = [self.acc_ub]*(self.m-1)*self.n_targets
             if self.w_opt=='inner' and self.one_scale and self.single_beta:
-                xl += [-10]
-                xu += [10]
+                xl += [self.scale_bounds[0]]
+                xu += [self.scale_bounds[1]]
             problem = FunctionalProblem(
                 n_var=self.n_var,
                 objs=f_obj,
@@ -749,11 +767,9 @@ class TuneK:
                     # rerun the best run to get more details
                     theta_best, mse_total_best, mse_list_best = self.inner_opt(c0_acc_best, K)
                     if self.w_opt=='inner' and self.one_scale:
-                        scale_best = c0_acc_best[-1]
                         # convert c0_acc_best to a shaped array
                         c0_acc_best = c0_acc_best[:-1].reshape(self.n_targets,-1)
                     else:
-                        scale_best = 0
                         # convert c0_acc_best to a shaped array
                         c0_acc_best = c0_acc_best.reshape(self.n_targets,-1)
 
@@ -761,7 +777,6 @@ class TuneK:
                     info_dict = {'mse_best': mse_total_best,
                                  'mse_list_best': mse_list_best,
                                  'c0_acc_best': c0_acc_best,
-                                 # 'scale_best': scale_best,
                                  'theta_best': theta_best}
                     output_list.append(info_dict)
         elif self.acc_opt=='outer' and self.w_opt=='inner':
