@@ -443,7 +443,7 @@ def make_out_edge_df(n, n_layers, out_weights, node_df, edge_scale):
     return output_df
 
 
-def make_forward_network_plots(n, n_input, param_set_file, univ_to_plot, out_weights = None, \
+def make_forward_network_plots(n, n_input, univs_to_plot, param_sets=None, param_set_file=None, out_weights = None, \
                                ncols = 1, node_scales = {'input':2,'accessory':2,'dimer':2,'output':2},\
                                edge_scales={'input':4,'K':50,'output':15}, \
                                rotate = False, figsize = (12,12),K_input_cmap = 'Set1'):
@@ -458,10 +458,12 @@ def make_forward_network_plots(n, n_input, param_set_file, univ_to_plot, out_wei
         Number of total monomers in the network.
     n_input: Int
         Number of input monomers
-    param_set_file: Str
-        File path to the .npy file containing the saved parameter sets.
-    univ_to_plot: array-like
+    univ_to_plots: array-like
         Array of which universes (parameter sets) to plot.
+    param_sets: Array-like, shape (n_univ, n_parameters)
+        Array of parameters to plot. Alternatively, can use:
+        param_set_file: Str
+            File path to the .npy file containing the saved parameter sets.
     out_weights: array-like or None
         Weights describing the output activity of each dimer species. Either specify a weight
         for ALL dimers (including zeros for inactive dimers) or pass None for no output layer.
@@ -485,8 +487,8 @@ def make_forward_network_plots(n, n_input, param_set_file, univ_to_plot, out_wei
         plot_output_layer = False
     else:
         plot_output_layer = True
-    
-    param_sets = np.load(param_set_file)
+    if param_sets is None:
+        param_sets = np.load(param_set_file)
     param_sets = param_sets[univ_to_plot,:]
     num_plots = len(univ_to_plot)
     species_names = np.array(make_nXn_species_names(n))
@@ -681,7 +683,7 @@ def make_heterodimer_edges(n, node_df, titrated_param = None):
     edge_df['titrated_param'] = edge_df['Kij_names'] == titrated_param 
     return edge_df
 
-def make_network_plots_polygon(n, n_input, univ_to_plot, param_sets=None, param_set_file=None, ncols = 1, r_node = 1, r_loop = 0.5,
+def make_network_plots_polygon(n, n_input, univs_to_plot, param_sets=None, param_set_file=None, ncols = 1, r_node = 1, r_loop = 0.5,
                             node_scale = 20, K_edge_scale = 30,figsize=(12,12),input_cmap='Pastel1',fontsize=16):
     """
     Load a subset of networks from a parameter file and plot the affinity parameters between monomers.
@@ -692,12 +694,12 @@ def make_network_plots_polygon(n, n_input, univ_to_plot, param_sets=None, param_
         Number of total monomers in the network.
     n_input: Int
         Number of input monomers
+    univs_to_plot: array-like
+        Array of which universes (parameter sets) to plot.
     param_sets: Array-like, shape (n_univ, n_parameters)
         Array of parameters to plot. Alternatively, can use:
         param_set_file: Str
             File path to the .npy file containing the saved parameter sets.
-    univ_to_plot: array-like
-        Array of which universes (parameter sets) to plot.
     out_weights: array-like or None
         Weights describing the output activity of each dimer species. Either specify a weight
         for ALL dimers (including zeros for inactive dimers) or pass None for no output layer.
