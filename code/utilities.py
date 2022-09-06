@@ -460,7 +460,7 @@ def make_forward_network_plots(n, n_input, univs_to_plot, param_sets=None, param
         Number of total monomers in the network.
     n_input: Int
         Number of input monomers
-    univ_to_plots: array-like
+    univs_to_plots: array-like
         Array of which universes (parameter sets) to plot.
     param_sets: Array-like, shape (n_univ, n_parameters)
         Array of parameters to plot. Alternatively, can use:
@@ -491,8 +491,8 @@ def make_forward_network_plots(n, n_input, univs_to_plot, param_sets=None, param
         plot_output_layer = True
     if param_sets is None:
         param_sets = np.load(param_set_file)
-    param_sets = param_sets[univ_to_plot,:]
-    num_plots = len(univ_to_plot)
+    param_sets = param_sets[univs_to_plot,:]
+    num_plots = len(univs_to_plot)
     species_names = np.array(make_nXn_species_names(n))
     dimer_names = species_names[n:]
     Kij_labels = make_Kij_names(n_input = n_input, n_accesory=(n-n_input))
@@ -505,7 +505,7 @@ def make_forward_network_plots(n, n_input, univs_to_plot, param_sets=None, param
         #scale acc monomer weights
         acc_weights = np.log10(param_sets[i,num_rxns:]) + 3
         node_df_list[i] = make_network_nodes(n=n, n_input=n_input, acc_levels=acc_weights)
-    node_df_combined = pd.concat(node_df_list, keys=univ_to_plot).reset_index()
+    node_df_combined = pd.concat(node_df_list, keys=univs_to_plot).reset_index()
     node_df_combined.rename(columns={'level_0': 'univ'}, inplace=True)
 
     edge_df_list = [0]*num_plots
@@ -514,11 +514,11 @@ def make_forward_network_plots(n, n_input, univs_to_plot, param_sets=None, param
         edge_weights = np.log2(param_sets[i,:num_rxns]/1e-6)
         edge_df_list[i] = make_Kij_edge_df(n, node_df_list[0], edge_weights, 
                                            edge_scale=1, titrated_param = None)
-    edge_df_combined = pd.concat(edge_df_list, keys=univ_to_plot).reset_index()
+    edge_df_combined = pd.concat(edge_df_list, keys=univs_to_plot).reset_index()
     edge_df_combined.rename(columns={'level_0': 'univ'}, inplace=True)
 
     input_df = make_input_edge_df(n=n, input_species=species_names[0:n_input], node_df=node_df_list[0])
-    input_df_combined = pd.concat([input_df]*num_plots, keys=univ_to_plot).reset_index()
+    input_df_combined = pd.concat([input_df]*num_plots, keys=univs_to_plot).reset_index()
     input_df_combined.rename(columns={'level_0': 'univ'}, inplace=True)
     
     if plot_output_layer:
@@ -526,21 +526,21 @@ def make_forward_network_plots(n, n_input, univs_to_plot, param_sets=None, param
             output_df = make_out_edge_df(n=n, n_layers=1, 
                                      out_weights=out_weights, 
                                      node_df=node_df_list[0], edge_scale=1)
-            output_df_combined = pd.concat([output_df]*num_plots, keys=univ_to_plot).reset_index()
+            output_df_combined = pd.concat([output_df]*num_plots, keys=univs_to_plot).reset_index()
         elif np.ndim(out_weights) == 2:
             output_list = [0]*num_plots
             for univ in range(num_plots):
                 output_list[univ] = make_out_edge_df(n=n, n_layers=1, 
                                      out_weights=out_weights[univ,:], 
                                      node_df=node_df_list[0], edge_scale=1)
-            output_df_combined = pd.concat(output_list, keys=univ_to_plot).reset_index()
+            output_df_combined = pd.concat(output_list, keys=univs_to_plot).reset_index()
         
         output_df_combined.rename(columns={'level_0': 'univ'}, inplace=True)
 
-    if len(univ_to_plot)==1:
+    if len(univs_to_plot)==1:
         ncols = 1
-    fig, axs = plt.subplots(nrows=math.ceil(len(univ_to_plot)//ncols), ncols=ncols,figsize=figsize)
-    if len(univ_to_plot)==1:
+    fig, axs = plt.subplots(nrows=math.ceil(len(univs_to_plot)//ncols), ncols=ncols,figsize=figsize)
+    if len(univs_to_plot)==1:
         axs = [axs]
     color_types ={
         'input':'black',
@@ -554,7 +554,7 @@ def make_forward_network_plots(n, n_input, univs_to_plot, param_sets=None, param
     else:
         K_cmap = K_input_cmap
 
-    for univ, ax in zip(list(univ_to_plot),axs):
+    for univ, ax in zip(list(univs_to_plot),axs):
         ax.axis('off') # Hide axes
         node_df = node_df_combined.query('univ==@univ')
         edge_df = edge_df_combined.query('univ==@univ')
@@ -723,8 +723,8 @@ def make_network_plots_polygon(n, n_input, univs_to_plot, param_sets=None, param
     """
     if param_sets is None:
         param_sets = np.load(param_set_file)
-    param_sets = param_sets[univ_to_plot,:]
-    num_plots = len(univ_to_plot)
+    param_sets = param_sets[univs_to_plot,:]
+    num_plots = len(univs_to_plot)
     species_names = np.array(make_nXn_species_names(n))
     dimer_names = species_names[n:]
     Kij_labels = make_Kij_names(n_input = n_input, n_accesory=(n-n_input))
@@ -737,12 +737,12 @@ def make_network_plots_polygon(n, n_input, univs_to_plot, param_sets=None, param
         #scale acc monomer weights
         acc_weights = np.log10(param_sets[i,num_rxns:]) + 3
         node_df_list[i] = make_network_nodes_polygon(n=n, r=r_node, n_input=n_input)
-    node_df_combined = pd.concat(node_df_list, keys=univ_to_plot).reset_index()
+    node_df_combined = pd.concat(node_df_list, keys=univs_to_plot).reset_index()
     node_df_combined.rename(columns={'level_0': 'univ'}, inplace=True)
     
-    node_weights = param_sets[np.arange(num_plots), num_rxns:]
+    node_weights = param_sets[:, num_rxns:]
     node_weights = np.hstack((np.ones((num_plots, n_input))*1e-3, node_weights))
-    node_weights = np.log2(node_weights/1e-4)*node_scale
+    node_weights = np.log2(node_weights/1e-4)
 
     node_df_combined['weight'] = node_weights.flatten()
     
@@ -754,7 +754,7 @@ def make_network_plots_polygon(n, n_input, univs_to_plot, param_sets=None, param
     self_edge_index = np.where(np.isin(Kij_labels, self_edge_labels))[0]
 
     self_edge_weights = param_sets[np.arange(num_plots)[:,np.newaxis], self_edge_index]
-    self_edge_weights = np.log2(self_edge_weights/1e-6)*edge_scale
+    self_edge_weights = np.log2(self_edge_weights/1e-6)
 
     self_edge_df_combined['weight'] = np.repeat(self_edge_weights.flatten(), self_edge_df_combined.level_1.max()+1)
 
@@ -764,7 +764,7 @@ def make_network_plots_polygon(n, n_input, univs_to_plot, param_sets=None, param
     hetero_edge_df_combined.rename(columns={'level_0': 'univ'}, inplace=True)
     hetero_edge_index = np.where(~np.isin(Kij_labels, self_edge_labels))[0]
     hetero_edge_weights = param_sets[np.arange(num_plots)[:,np.newaxis], hetero_edge_index]
-    hetero_edge_weights = np.log2(hetero_edge_weights/1e-6)*edge_scale
+    hetero_edge_weights = np.log2(hetero_edge_weights/1e-6)
     hetero_edge_df_combined['weight'] = hetero_edge_weights.flatten()
     
     if type(input_cmap)==str:
@@ -772,11 +772,11 @@ def make_network_plots_polygon(n, n_input, univs_to_plot, param_sets=None, param
     else:
         cmap = input_cmap
 
-    if len(univ_to_plot)==1:
+    if len(univs_to_plot)==1:
         ncols = 1
 
-    fig, axs = plt.subplots(nrows=math.ceil(len(univ_to_plot)//ncols), ncols=ncols,figsize=figsize)
-    if len(univ_to_plot)==1:
+    fig, axs = plt.subplots(nrows=math.ceil(len(univs_to_plot)//ncols), ncols=ncols,figsize=figsize)
+    if len(univs_to_plot)==1:
         axs = [axs]
 
     for univ, ax in enumerate(axs):
@@ -848,5 +848,6 @@ def make_network_plots_polygon(n, n_input, univs_to_plot, param_sets=None, param
         handles=list(patches.values()),\
         edgecolor='white',prop=font)
     return fig, axs
+
 
 
