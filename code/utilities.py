@@ -1,8 +1,10 @@
 import os, sys
+import pandas as pd
 import itertools
 import pickle
 import numpy as np
 import scipy.stats
+import eqtk
 from eqtk import parse_rxns
 import math
 from time import strftime, gmtime
