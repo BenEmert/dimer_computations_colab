@@ -681,7 +681,7 @@ def make_heterodimer_edges(n, node_df, titrated_param = None):
     edge_df['titrated_param'] = edge_df['Kij_names'] == titrated_param 
     return edge_df
 
-def make_network_plots_polygon(n, n_input, param_set_file, univ_to_plot, ncols = 1, r_node = 1, r_loop = 0.5,
+def make_network_plots_polygon(n, n_input, univ_to_plot, param_sets=None, param_set_file=None, ncols = 1, r_node = 1, r_loop = 0.5,
                             node_scale = 20, K_edge_scale = 30,figsize=(12,12),input_cmap='Pastel1',fontsize=16):
     """
     Load a subset of networks from a parameter file and plot the affinity parameters between monomers.
@@ -692,8 +692,10 @@ def make_network_plots_polygon(n, n_input, param_set_file, univ_to_plot, ncols =
         Number of total monomers in the network.
     n_input: Int
         Number of input monomers
-    param_set_file: Str
-        File path to the .npy file containing the saved parameter sets.
+    param_sets: Array-like, shape (n_univ, n_parameters)
+        Array of parameters to plot. Alternatively, can use:
+        param_set_file: Str
+            File path to the .npy file containing the saved parameter sets.
     univ_to_plot: array-like
         Array of which universes (parameter sets) to plot.
     out_weights: array-like or None
@@ -715,7 +717,8 @@ def make_network_plots_polygon(n, n_input, param_set_file, univ_to_plot, ncols =
     Returns:
         fig, axs: Created plot
     """
-    param_sets = np.load(param_set_file)
+    if param_sets is None:
+        param_sets = np.load(param_set_file)
     param_sets = param_sets[univ_to_plot,:]
     num_plots = len(univ_to_plot)
     species_names = np.array(make_nXn_species_names(n))
