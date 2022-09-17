@@ -15,12 +15,13 @@ FLAGS = parser.parse_args()
 mydict = {
     "base_dir": [FLAGS.base_dir],
     "target_lib_name": ["bumps_all"],
+    "n_switches": [1, 2],
     "start": ["on", "off"],
     "m": [3, 5],
     "acc_opt": ["inner"],
     "w_opt": ["inner", "outer"],
     "single_beta": [1],
-    "one_scale": [1],
+    "one_scale": [0, 1],
     "plot_inner_opt": [0],  # [0, 1],
     "maxiter_O": [10, 20],
     "popsize_O": [5, 10],
@@ -36,9 +37,14 @@ EXPERIMENT_LIST = dict_combiner(mydict)
 MAX_ITERS = 3e4
 
 def namemaker(x):
-    keys = [k for k in mydict.keys() if k not in ['base_dir','target_lib_name', 'plot_inner_opt', 'nstarts_K']]
-    nm_list = ['{}-{}'.format(k, x[k]) for k in keys]
-    nm = '_'.join(nm_list)
+
+    foo = [x[k] for k in ['n_switches', 'acc_opt', 'w_opt', 'single_beta', 'one_scale', 'm']]
+    dirname = 'nswitches-{}_a-{}_w-{}_singleBeta-{}_oneScale-{}_m-{}'.format(*foo)
+
+    goo = [x[k] for k in ['maxiter_O', 'popsize_O', 'polish_O', 'maxiter_K', 'popsize_K', 'polish_K', 'start']]
+    fname = 'maxiterO-{}_popsizeO-{}_polishO-{}_maxiterK-{}_popsizeK-{}_polishK-{}_start-{}'.format(*goo)
+
+    nm = os.path.join(dirname, fname)
     return nm
 
 def run_main(sett):
