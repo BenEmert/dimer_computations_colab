@@ -4,8 +4,6 @@
 
 #SBATCH --time=60:00:00   # walltime
 #SBATCH --array=0-767      # how many tasks in the array
-#SBATCH --cpus=1
-#SBATCH --cpus-per-task=1
 #SBATCH -J "manybumps1switch"   # job name
 #SBATCH --output=slurm/%x.%j.out
 #SBATCH --error=slurm/%x.%j.err
