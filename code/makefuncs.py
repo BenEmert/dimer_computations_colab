@@ -17,7 +17,7 @@ def set_target_library(n_input_samples=10, target_lib_name="SinCos", target_lib_
 
         f_targets = np.vstack((target_function_sin, target_function_cos))
     elif target_lib_name=='bumps_all':
-        F = bumps_all(n_switches)
+        F = bumps_all(n_switches, start=start)
         f_targets = interp_target(n_input_samples, F, kind='next')
     elif target_lib_name=='MetaClusters':
         with open(target_lib_file, 'rb') as f:
@@ -28,7 +28,7 @@ def set_target_library(n_input_samples=10, target_lib_name="SinCos", target_lib_
         # SO, if you change n_input_samples, the bump function will change (e.g. finer discretization => narrower bump).
         # to alleviate this, can make the bump_width wider.
         # in the future, should define bumps in real coordinates, THEN interpolate and determine discretizations afterwards.
-        f_targets = bump_targets(bump_centers, bump_width, n_input_samples, start)
+        f_targets = bump_targets(bump_centers, bump_width, n_input_samples)
     else:
         raise('library name "{}" not recognized. Quitting.'.format(target_lib_name))
 

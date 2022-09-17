@@ -7,11 +7,13 @@ from bump_inference_tests_ainner_ManyBumps import opt_wrapper
 from pdb import set_trace as bp
 
 parser = argparse.ArgumentParser()
+parser.add_argument('--base_dir', default='../results/manybumps1switch', type=str) # base directory for output
 parser.add_argument("--run_all", default=0, type=int)
 parser.add_argument("--id", default=0, type=int)
 FLAGS = parser.parse_args()
 
 mydict = {
+    "base_dir": [FLAGS.base_dir],
     "target_lib_name": ["bumps_all"],
     "start": ["on", "off"],
     "m": [3, 5],
