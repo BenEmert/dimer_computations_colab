@@ -1,4 +1,4 @@
-import sys
+import os, sys
 import argparse
 import pandas as pd
 sys.path.append('../code')
@@ -35,7 +35,16 @@ EXPERIMENT_LIST = dict_combiner(mydict)
 
 MAX_ITERS = 3e4
 
+def namemaker(x):
+    keys = [k for k in mydict.keys() if k not in ['base_dir','target_lib_name', 'plot_inner_opt', 'nstarts_K']]
+    nm_list = ['{}-{}'.format(k, x[k]) for k in keys]
+    nm = '_'.join(nm_list)
+    return nm
+
 def run_main(sett):
+
+    sett['base_dir'] = os.path.join(sett['base_dir'], namemaker(sett))
+
     K_names = ['maxiter_K', 'popsize_K', 'polish_K', 'nstarts_K']
     sett_K = {k.split('_')[0]: sett[k] for k in K_names}
 
