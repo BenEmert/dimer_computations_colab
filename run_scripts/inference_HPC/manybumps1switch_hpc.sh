@@ -3,7 +3,7 @@
 #Submit this script with: sbatch thefilename
 
 #SBATCH --time=60:00:00   # walltime
-#SBATCH --array=0-191      # how many tasks in the array
+#SBATCH --array=0-767      # how many tasks in the array
 #SBATCH --cpus=1
 #SBATCH --cpus-per-task=1
 #SBATCH -J "manybumps1switch"   # job name
