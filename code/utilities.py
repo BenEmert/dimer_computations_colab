@@ -10,6 +10,16 @@ import json
 
 from pdb import set_trace as bp
 
+import itertools
+
+def dict_combiner(mydict):
+    if mydict:
+        keys, values = zip(*mydict.items())
+        experiment_list = [dict(zip(keys, v)) for v in itertools.product(*values)]
+    else:
+        experiment_list = [{}]
+    return experiment_list
+
 class DotDict(dict):
     """dot.notation access to dictionary attributes
     From https://stackoverflow.com/questions/2352181/how-to-use-a-dot-to-access-members-of-dictionary

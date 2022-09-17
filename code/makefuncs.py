@@ -8,7 +8,7 @@ import scipy.interpolate
 import numpy as np
 from pdb import set_trace as bp
 
-def set_target_library(n_input_samples=10, target_lib_name="SinCos", target_lib_file=None, bump_centers=[0.2, 0.4, 0.6], bump_width=2, n_switches=2):
+def set_target_library(n_input_samples=10, target_lib_name="SinCos", target_lib_file=None, bump_centers=[0.2, 0.4, 0.6], bump_width=2, n_switches=2, start="both"):
     '''Generate a library of functions to which we will fit or use to measure expressivity.'''
     if target_lib_name=='SinCos':
         x = np.linspace(0, 2*np.pi, n_input_samples)
@@ -28,7 +28,7 @@ def set_target_library(n_input_samples=10, target_lib_name="SinCos", target_lib_
         # SO, if you change n_input_samples, the bump function will change (e.g. finer discretization => narrower bump).
         # to alleviate this, can make the bump_width wider.
         # in the future, should define bumps in real coordinates, THEN interpolate and determine discretizations afterwards.
-        f_targets = bump_targets(bump_centers, bump_width, n_input_samples)
+        f_targets = bump_targets(bump_centers, bump_width, n_input_samples, start)
     else:
         raise('library name "{}" not recognized. Quitting.'.format(target_lib_name))
 
@@ -61,8 +61,15 @@ def bump_on(bump_starts, n_input_samples):
         f_targets[n,i_low:] = 1 # assign the bump
     return f_targets
 
-def bumps_all(n_switches=1, n_switch_points=5, bounds=(0,1)):
+def bumps_all(n_switches=1, n_switch_points=5, bounds=(0,1), start="both"):
     # note: bounds are arbitrary
+
+    if start=="on":
+        start_list = [1]
+    elif start=="off":
+        start_list = [0]
+    elif start=="both":
+        start_list = [0,1]
 
     switch_grid = np.linspace(bounds[0], bounds[1], n_switch_points+2) # always includes bounds[0] and bounds[1] by default (+2 for endpoints)
 
@@ -86,7 +93,7 @@ def bumps_all(n_switches=1, n_switch_points=5, bounds=(0,1)):
             # switch_points = switch_points[(switch_points[:,0]>bounds[0]) & (switch_points[:,-1]<bounds[1])]
             switch_points = switch_points[(switch_points[:,0]>bounds[0])]
 
-        for f0 in [0,1]: # start off/on
+        for f0 in start_list: # start off/on
             for sp_vec in switch_points:
                 f = np.zeros_like(switch_grid)
                 f[:] = f0 # set everything to f0 (on/off)

@@ -30,6 +30,7 @@ parser1 = argparse.ArgumentParser()
 ## Settings for TuneK
 parser1.add_argument('--base_dir', default='../results/manyBumps/a-inner_w-outer/', type=str) # base directory for output
 parser1.add_argument('--target_lib_name', default='bumps_all', type=str) # Name for target library
+parser1.add_argument('--start', default='both', type=str)
 parser1.add_argument('--n_switches', default=2, type=int) # number of switches in bump library
 parser1.add_argument('--target_lib_file', default='../data/metaclusters/hc_3M_metaClusterBasis_thresh3.npy', type=str) # file for reading target functions
 parser1.add_argument('--m', default=3, type=int) #number of total monomers
@@ -51,8 +52,8 @@ parser3.add_argument('--popsize_O', default=50, type=int)
 parser3.add_argument('--polish_O', default=1, type=int)
 parser3.add_argument('--workers_O', default=1, type=int) # default is to use 1 worker (not paralleized). -1 uses all available workers!
 FLAGS_optsetts, __ = parser3.parse_known_args()
-tune_dict = FLAGS_tune.__dict__
-tune_dict['opt_settings_outer'] = make_opt_settings(FLAGS_optsetts.__dict__)
+TUNE_DICT = FLAGS_tune.__dict__
+TUNE_DICT['opt_settings_outer'] = make_opt_settings(FLAGS_optsetts.__dict__)
 
 # Settings for Differential Evolution optimizer over binding affinity K
 parser2 = argparse.ArgumentParser()
@@ -64,7 +65,7 @@ parser2.add_argument('--nstarts_K', default=2, type=int) # number of outer optim
 FLAGS_diffev, __ = parser2.parse_known_args()
 opt_setts_K = make_opt_settings(FLAGS_diffev.__dict__)
 
-def opt_wrapper(opt_setts, n_rounds=1, bump_center=0.5, bump_width=2, **kwargs):
+def opt_wrapper(opt_setts, n_rounds=1, bump_center=0.5, bump_width=2, tune_dict=TUNE_DICT, **kwargs):
 
     FOO = TuneK(**tune_dict)
 
