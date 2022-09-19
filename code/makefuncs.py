@@ -75,9 +75,7 @@ def bumps_all(n_switches=1, n_switch_points=5, bounds=(0,1), start="both"):
 
     for n_lam in range(n_switches+1):
         if n_lam==0:
-            f_off = np.zeros_like(switch_grid)
-            f_on = np.ones_like(switch_grid)
-            f_targets = [f_off, f_on]
+            f_targets = [s*np.ones_like(switch_grid) for s in start_list]
             continue
         elif n_lam==1:
             # switch_points = switch_grid[1:-1].reshape(-1,1)
