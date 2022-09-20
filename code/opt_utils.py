@@ -18,7 +18,7 @@ plt.rcParams.update({'font.size': 22, 'legend.fontsize': 12,
 default_colors = np.array(plt.rcParams['axes.prop_cycle'].by_key()['color'])
 
 def thresh2eps(x, eps=1e-10):
-    x[np.abs(x)<=eps] = 0
+    x[np.abs(x)<=eps] = eps
     return x
 
 def minimize_wrapper(problem, algorithm, termination, seed=None, save_history=True,
