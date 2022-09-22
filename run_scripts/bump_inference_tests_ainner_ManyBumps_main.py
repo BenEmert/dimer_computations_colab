@@ -22,7 +22,7 @@ mydict = {
     "acc_opt": ["inner"],
     "w_opt": ["inner"],
     "single_beta": [1],
-    "one_scale": [0, 1],
+    "scale_type": ["per-dimer", "global", "per-target"],
     "plot_inner_opt": [0],  # [0, 1],
     "maxiter_O": [5, 10, 20],
     "popsize_O": [5, 10],
@@ -39,8 +39,8 @@ MAX_ITERS = 3e4
 
 def namemaker(x):
 
-    foo = [x[k] for k in ['n_switches', 'acc_opt', 'w_opt', 'single_beta', 'one_scale', 'm']]
-    dirname = 'nswitches-{}_a-{}_w-{}_singleBeta-{}_oneScale-{}_m-{}'.format(*foo)
+    foo = [x[k] for k in ['n_switches', 'acc_opt', 'w_opt', 'single_beta', 'scale_type', 'm']]
+    dirname = 'nswitches-{}_a-{}_w-{}_singleBeta-{}_scaleType-{}_m-{}'.format(*foo)
 
     goo = [x[k] for k in ['maxiter_O', 'popsize_O', 'polish_O', 'maxiter_K', 'popsize_K', 'polish_K', 'start']]
     fname = 'maxiterO-{}_popsizeO-{}_polishO-{}_maxiterK-{}_popsizeK-{}_polishK-{}_start-{}'.format(*goo)

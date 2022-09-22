@@ -53,7 +53,7 @@ class TuneK:
                     acc_opt = 'inner',
                     w_opt = 'inner',
                     single_beta = False,
-                    one_scale = False,
+                    scale_type = "global", # "per-dimer", "per-target"
                     scale_bounds = (-14,14), # in log10 space
                     opt_settings_outer = {}, # use default settings for differential evolution
                     m = 3,
@@ -129,7 +129,13 @@ class TuneK:
         self.setup()
 
         self.single_beta = single_beta
-        self.one_scale = one_scale
+        self.scale_type = scale_type
+        if self.scale_type in ["per-dimer", "global"]:
+            self.one_scale = True
+        elif self.scale_type == "per-target":
+            self.one_scale = False
+        else:
+            raise('Scale Type not recognized')
         self.acc_opt = acc_opt
         self.w_opt = w_opt
         self.lsq_linear_method = lsq_linear_method
@@ -542,7 +548,7 @@ class TuneK:
         return mse_best
 
     def try_lsq_linear(self, x, y, scale=None, fit=True):
-
+        assert x.shape[0]==y.shape[0]
         if fit:
             try:
                 foo = scipy.optimize.lsq_linear(x, y, bounds=self.lsq_bounds, method=self.lsq_linear_method)
@@ -550,14 +556,16 @@ class TuneK:
                 print('BVLS tolerance not met. Switching to TRF solver.')
                 foo = scipy.optimize.lsq_linear(x, y, bounds=self.lsq_bounds, method='trf')
         else:
-            fun = y - scale*x
+            fun = y.squeeze() - scale*x.squeeze()
             foo = DotDict(fun=fun, x=scale)
 
         return foo
 
     def find_best_beta(self, x, y, scale=None, fit=True):
         n_betas = x.shape[1]
-        foo_list = [self.try_lsq_linear(x[:,j].reshape(-1,1), y, scale=scale, fit=fit) for j in range(n_betas)]
+        if len(scale)==1:
+            scale = np.array([scale]*n_betas).squeeze()
+        foo_list = [self.try_lsq_linear(x[:,j].reshape(-1,1), y, scale=scale[j], fit=fit) for j in range(n_betas)]
         j_best = 0
         mse_best = np.Inf
         for j in range(n_betas):
@@ -581,7 +589,6 @@ class TuneK:
 
     def inner_opt(self, c0_acc, K, j_target=None, error_only=False, apply_power_theta=True):
         '''This function computes optimal linear weights and the associated errors incurred for these optimal weights.'''
-
         if self.acc_opt=='inner' and self.w_opt=='inner' and self.one_scale and self.single_beta:
 
             dimers_all = []
@@ -591,16 +598,16 @@ class TuneK:
                 dimers_j = self.g1(c0_acc[i_low:i_high], K) # 40 x 9
                 dimers_all += [dimers_j]
             # targets_all = self.f_targets.reshape(-1) #(40*n,)
-            dimers_all = np.vstack(dimers_all)
+            dimers_all = np.array(dimers_all)
 
             theta_star = np.zeros((self.n_targets, dimers_j.shape[1]))
             mse_total = 0
             mse_list = [0 for j in range(self.n_targets)]
             for j in range(self.n_targets):
-                scale = c0_acc[-1]
+                scale = c0_acc[-self.n_scales:]
                 if apply_power_theta:
                     scale = np.float_power(10, scale)
-                foo = self.lsq_linear_wrapper(x=dimers_all, y=self.f_targets[j], scale=scale, one_scale=True)
+                foo = self.lsq_linear_wrapper(x=dimers_all[j], y=self.f_targets[j], scale=scale, one_scale=True)
                 theta_star[j] = foo.x
                 mse_j = np.sum(foo.fun**2) / self.n_input_samples / self.f_targets_max_sq[j]
                 mse_list[j] = mse_j
@@ -677,8 +684,8 @@ class TuneK:
             xl = [self.acc_lb]*(self.m-1)*self.n_targets
             xu = [self.acc_ub]*(self.m-1)*self.n_targets
             if self.w_opt=='inner' and self.one_scale and self.single_beta:
-                xl += [self.scale_bounds[0]]
-                xu += [self.scale_bounds[1]]
+                xl += [self.scale_bounds[0]]*self.n_scales
+                xu += [self.scale_bounds[1]]*self.n_scales
             problem = FunctionalProblem(
                 n_var=self.n_var,
                 objs=f_obj,
@@ -769,7 +776,7 @@ class TuneK:
                     theta_best, mse_total_best, mse_list_best = self.inner_opt(c0_acc_best, K)
                     if self.w_opt=='inner' and self.one_scale:
                         # convert c0_acc_best to a shaped array
-                        c0_acc_best = c0_acc_best[:-1].reshape(self.n_targets,-1)
+                        c0_acc_best = c0_acc_best[:-self.n_scales].reshape(self.n_targets,-1)
                     else:
                         # convert c0_acc_best to a shaped array
                         c0_acc_best = c0_acc_best.reshape(self.n_targets,-1)
@@ -809,9 +816,15 @@ class TuneK:
         if self.acc_opt=='inner' and self.w_opt=='outer':
             self.n_var = self.n_targets * (self.m-1)
         elif self.acc_opt=='inner' and self.one_scale:
-            self.n_var = self.n_targets * (self.m-1) + 1
+            if self.scale_type=="global":
+                n_scales = 1
+            elif self.scale_type=="per-dimer":
+                n_scales = self.n_dimers
+            self.n_var = self.n_targets * (self.m-1) + n_scales
+            self.n_scales = n_scales
         else:
             self.n_var = self.m-1
+
 
         self.algorithm = DE(CR=0.9,
             pop_size=(self.m-1) * self.opt_settings_outer['popsize'])
