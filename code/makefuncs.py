@@ -72,10 +72,13 @@ def bumps_all(n_switches=1, n_switch_points=5, bounds=(0,1), start="both", make_
         start_list = [0,1]
 
     switch_grid = np.linspace(bounds[0], bounds[1], n_switch_points+2) # always includes bounds[0] and bounds[1] by default (+2 for endpoints)
-    f_targets = []
+
     for n_lam in range(n_switches+1):
-        if n_lam==0 and make_constants:
-            f_targets = [s*np.ones_like(switch_grid) for s in start_list]
+        if n_lam==0:
+            if make_constants:
+                f_targets = [s*np.ones_like(switch_grid) for s in start_list]
+            else:
+                f_targets = []
             continue
         elif n_lam==1:
             # switch_points = switch_grid[1:-1].reshape(-1,1)
