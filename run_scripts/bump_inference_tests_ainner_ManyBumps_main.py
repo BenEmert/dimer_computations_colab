@@ -38,7 +38,7 @@ if FLAGS.dev_run:
     mydict['maxiter_O'] = [2]
     mydict['maxiter_K'] = [2]
     mydict['popsize_O'] = [1]
-    mydict['popsize_O'] = [1]
+    mydict['popsize_K'] = [1]
 
 EXPERIMENT_LIST = dict_combiner(mydict)
 
