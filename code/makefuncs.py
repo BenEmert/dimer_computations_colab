@@ -8,7 +8,7 @@ import scipy.interpolate
 import numpy as np
 from pdb import set_trace as bp
 
-def set_target_library(n_input_samples=10, target_lib_name="SinCos", target_lib_file=None, bump_centers=[0.2, 0.4, 0.6], bump_width=2, n_switches=2, start="both"):
+def set_target_library(n_input_samples=10, target_lib_name="SinCos", target_lib_file=None, bump_centers=[0.2, 0.4, 0.6], bump_width=2, n_switch_points=5, n_switches=2, start="both"):
     '''Generate a library of functions to which we will fit or use to measure expressivity.'''
     if target_lib_name=='SinCos':
         x = np.linspace(0, 2*np.pi, n_input_samples)
@@ -17,7 +17,7 @@ def set_target_library(n_input_samples=10, target_lib_name="SinCos", target_lib_
 
         f_targets = np.vstack((target_function_sin, target_function_cos))
     elif target_lib_name=='bumps_all':
-        F = bumps_all(n_switches, start=start)
+        F = bumps_all(n_switches, n_switch_points, start=start)
         f_targets = interp_target(n_input_samples, F, kind='next')
     elif target_lib_name=='MetaClusters':
         with open(target_lib_file, 'rb') as f:

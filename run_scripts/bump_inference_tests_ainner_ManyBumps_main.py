@@ -18,6 +18,7 @@ mydict = {
     "target_lib_name": ["bumps_all"],
     "dimer_eps": [1e-3],
     "n_switches": [1, 2],
+    "n_switch_points": [2, 5],
     "start": ["on", "off", "both"],
     "m": [3, 4],
     "acc_opt": ["inner"],
@@ -46,8 +47,8 @@ MAX_ITERS = 2e5
 
 def namemaker(x):
 
-    foo = [x[k] for k in ['n_switches', 'acc_opt', 'w_opt', 'single_beta', 'scale_type', 'm']]
-    dirname = 'nswitches-{}_a-{}_w-{}_singleBeta-{}_scaleType-{}_m-{}'.format(*foo)
+    foo = [x[k] for k in ['n_switches', 'n_switch_points', 'acc_opt', 'w_opt', 'single_beta', 'scale_type', 'm']]
+    dirname = 'nswitches-{}_nswitchlocs-{}_a-{}_w-{}_singleBeta-{}_scaleType-{}_m-{}'.format(*foo)
 
     goo = [x[k] for k in ['maxiter_O', 'popsize_O', 'polish_O', 'maxiter_K', 'popsize_K', 'polish_K', 'start']]
     fname = 'maxiterO-{}_popsizeO-{}_polishO-{}_maxiterK-{}_popsizeK-{}_polishK-{}_start-{}'.format(*goo)
