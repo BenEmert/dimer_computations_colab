@@ -8,6 +8,7 @@ from pdb import set_trace as bp
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--base_dir', default='../results/manybumps1switch', type=str) # base directory for output
+parser.add_argument("--dev_run", default=0, type=int)
 parser.add_argument("--run_all", default=0, type=int)
 parser.add_argument("--id", default=0, type=int)
 FLAGS = parser.parse_args()
@@ -17,7 +18,7 @@ mydict = {
     "target_lib_name": ["bumps_all"],
     "dimer_eps": [1e-3],
     "n_switches": [1, 2],
-    "start": ["on", "off"],
+    "start": ["on", "off", "both"],
     "m": [3, 4],
     "acc_opt": ["inner"],
     "w_opt": ["inner"],
@@ -33,9 +34,15 @@ mydict = {
     "nstarts_K": [2],
 }
 
+if FLAGS.dev_run:
+    mydict['maxiter_O'] = [2]
+    mydict['maxiter_K'] = [2]
+    mydict['popsize_O'] = [1]
+    mydict['popsize_O'] = [1]
+
 EXPERIMENT_LIST = dict_combiner(mydict)
 
-MAX_ITERS = 3e4
+MAX_ITERS = 2e5
 
 def namemaker(x):
 

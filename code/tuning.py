@@ -563,8 +563,10 @@ class TuneK:
 
     def find_best_beta(self, x, y, scale=None, fit=True):
         n_betas = x.shape[1]
-        if len(scale)==1:
-            scale = np.array([scale]*n_betas).squeeze()
+        if scale is None:
+            scale = [None for j in range(n_betas)]
+        elif len(scale)==1:
+            scale = [scale for j in range(n_betas)]
         foo_list = [self.try_lsq_linear(x[:,j].reshape(-1,1), y, scale=scale[j], fit=fit) for j in range(n_betas)]
         j_best = 0
         mse_best = np.Inf
