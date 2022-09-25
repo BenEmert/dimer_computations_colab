@@ -7,7 +7,7 @@ from bump_inference_tests_ainner_ManyBumps import opt_wrapper
 from pdb import set_trace as bp
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--base_dir', default='../results/manybumps1switch', type=str) # base directory for output
+parser.add_argument('--base_dir', default='../results/manybumps1switch_dev', type=str) # base directory for output
 parser.add_argument("--dev_run", default=0, type=int)
 parser.add_argument("--run_all", default=0, type=int)
 parser.add_argument("--id", default=0, type=int)
@@ -19,15 +19,15 @@ mydict = {
     "dimer_eps": [1e-3],
     "n_switches": [1, 2],
     "n_switch_points": [2, 5],
-    "start": ["on", "off", "both"],
+    "start": ["off"], #["on", "off", "both"],
     "m": [3, 4],
     "acc_opt": ["inner"],
     "w_opt": ["inner"],
     "single_beta": [1],
     "scale_type": ["per-dimer", "global", "per-target"],
-    "plot_inner_opt": [0],  # [0, 1],
-    "maxiter_O": [5, 10, 20],
-    "popsize_O": [5, 10],
+    "plot_inner_opt": [0, 1],
+    "maxiter_O": [10, 25],
+    "popsize_O": [10, 25, 50],
     "polish_O": [1],
     "maxiter_K": [10, 25],
     "popsize_K": [10, 25, 50],
@@ -40,15 +40,18 @@ if FLAGS.dev_run:
     mydict['maxiter_K'] = [2]
     mydict['popsize_O'] = [1]
     mydict['popsize_K'] = [1]
+    mydict['polish_K'] = [0]
+    mydict['polish_O'] = [0]
+
 
 EXPERIMENT_LIST = dict_combiner(mydict)
 
-MAX_ITERS = 2e5
+MAX_ITERS = 2e6
 
 def namemaker(x):
 
-    foo = [x[k] for k in ['n_switches', 'n_switch_points', 'acc_opt', 'w_opt', 'single_beta', 'scale_type', 'm']]
-    dirname = 'nswitches-{}_nswitchlocs-{}_a-{}_w-{}_singleBeta-{}_scaleType-{}_m-{}'.format(*foo)
+    foo = [x[k] for k in ['n_switches', 'n_switch_points', 'acc_opt', 'w_opt', 'single_beta', 'scale_type', 'm', 'plot_inner_opt']]
+    dirname = 'nswitches-{}_nswitchlocs-{}_a-{}_w-{}_singleBeta-{}_scaleType-{}_m-{}_plotInner-{}'.format(*foo)
 
     goo = [x[k] for k in ['maxiter_O', 'popsize_O', 'polish_O', 'maxiter_K', 'popsize_K', 'polish_K', 'start']]
     fname = 'maxiterO-{}_popsizeO-{}_polishO-{}_maxiterK-{}_popsizeK-{}_polishK-{}_start-{}'.format(*goo)
