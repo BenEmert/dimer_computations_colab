@@ -707,7 +707,7 @@ class TuneK:
         else:
             pass
 
-    def f_min_outer(self, problem, truth, plot_dirname, verbose=True, make_plots=True):
+    def f_min_outer(self, problem, truth, plot_dirname, verbose=True, make_plots=True, seed=99):
         opt_list = minimize_wrapper(
             problem,
             self.algorithm,
@@ -717,6 +717,7 @@ class TuneK:
             polish=self.polish,
             verbose=verbose,
             truth=truth,
+            seed=seed,
             plot_analyses=make_plots,
             plot_dirname=plot_dirname)
         return opt_list
