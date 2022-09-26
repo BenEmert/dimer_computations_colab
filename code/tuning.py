@@ -604,7 +604,6 @@ class TuneK:
             dimers_all = np.array(dimers_all)
 
             theta_star = np.zeros((self.n_targets, dimers_j.shape[1]))
-            mse_total = 0
             mse_list = [0 for j in range(self.n_targets)]
             for j in range(self.n_targets):
                 scale = c0_acc[-self.n_scales:]
@@ -612,9 +611,8 @@ class TuneK:
                     scale = np.float_power(10, scale)
                 foo = self.lsq_linear_wrapper(x=dimers_all[j], y=self.f_targets[j], scale=scale, one_scale=True)
                 theta_star[j] = foo.x
-                mse_j = np.sum(foo.fun**2) / self.n_input_samples / self.f_targets_max_sq[j]
-                mse_list[j] = mse_j
-                mse_total += mse_j # errs_j is l2 norm, so square it, then divide by N to get MSE
+                mse_list[j] = np.sum(foo.fun**2) / self.n_input_samples / self.f_targets_max_sq[j]
+            mse_total = np.mean(mse_list) # average over targets
             if error_only:
                 return mse_total
             else:
@@ -625,6 +623,7 @@ class TuneK:
             foo = self.lsq_linear_wrapper(x=dimers, y=self.f_targets[j_target])
             theta_star_j = foo.x
             mse_j = np.sum(foo.fun**2) / self.n_input_samples / self.f_targets_max_sq[j_target]
+            mse_j /= self.n_targets # average over targets
             if error_only:
                 return mse_j
             else:
@@ -640,7 +639,7 @@ class TuneK:
             dimers_all = np.vstack(dimers_all)
             foo = self.lsq_linear_wrapper(x=dimers_all, y=targets_all)
             theta_star = foo.x
-            mse_total = np.sum(foo.fun**2) / self.n_input_samples / np.sum(self.f_targets_max_sq)
+            mse_total = np.sum(foo.fun**2) / self.n_input_samples / np.sum(self.f_targets_max_sq) / self.n_targets
 
             # compute listed MSEs
             mse_list = [0 for j in range(self.n_targets)]
@@ -655,14 +654,12 @@ class TuneK:
         elif self.acc_opt=='outer' and self.w_opt=='inner':
             dimers = self.g1(c0_acc, K) # 40 x 9
             theta_star = np.zeros((self.n_targets, dimers.shape[1]))
-            mse_total = 0
             mse_list = [0 for j in range(self.n_targets)]
             for j in range(self.n_targets):
                 foo = self.lsq_linear_wrapper(x=dimers, y=self.f_targets[j])
                 theta_star[j] = foo.x
-                mse_j = np.sum(foo.fun**2) / self.n_input_samples / self.f_targets_max_sq[j]
-                mse_list[j] = mse_j
-                mse_total += mse_j # errs_j is l2 norm, so square it, then divide by N to get MSE
+                mse_list[j] = np.sum(foo.fun**2) / self.n_input_samples / self.f_targets_max_sq[j]
+            mse_total = np.mean(mse_list)
             if error_only:
                 return mse_total
             else:
@@ -768,7 +765,7 @@ class TuneK:
                         c0_acc_best[j,:] = c0_acc_best_j
                         theta_best[j,:] = theta_best_j
 
-                    info_dict = {'mse_best': mse_best/self.n_targets,
+                    info_dict = {'mse_best': mse_best,
                                 'mse_list_best': mse_list_best,
                                  'c0_acc_best': c0_acc_best,
                                  'theta_best': theta_best}
