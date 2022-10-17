@@ -28,10 +28,10 @@ mydict = {
     "scale_type": ["per-dimer"], #"per-target"],
     "plot_inner_opt": [0],
     "maxiter_O": [10],
-    "popsize_O": [10, 25],
+    "popsize_O": [25],
     "polish_O": [1],
-    "maxiter_K": [10, 25],
-    "popsize_K": [10, 25],
+    "maxiter_K": [25],
+    "popsize_K": [25],
     "polish_K": [1],
     "nstarts_K": [2],
 }
