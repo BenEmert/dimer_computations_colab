@@ -74,6 +74,7 @@ class TuneK:
                     log_errors=True,
                     no_rescaling=True,
                     nxsurface=10,
+                    id_target=None,
                     **kwargs):
         """
         Run simulations for dimer networks of size m and input titration size t
@@ -148,6 +149,9 @@ class TuneK:
         self.make_output_dir()
 
         self.f_targets = set_target_library(n_input_samples=n_input_samples, target_lib_name=target_lib_name, target_lib_file=target_lib_file, n_switches=n_switches, n_switch_points=n_switch_points, start=start)
+        if id_target is not None:
+            self.f_targets = self.f_targets[id_target].reshape(1,-1)
+
         if self.log_errors:
             self.f_targets = np.log10(self.f_targets)
 
