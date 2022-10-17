@@ -3,7 +3,7 @@
 #Submit this script with: sbatch thefilename
 
 #SBATCH --time=24:00:00   # walltime
-#SBATCH --array=0-881      # how many tasks in the array
+#SBATCH --array=0-1763      # how many tasks in the array
 #SBATCH -J "boundebumps"   # job name
 #SBATCH --output=slurm/%x.%j.out
 #SBATCH --error=slurm/%x.%j.err
