@@ -61,7 +61,10 @@ def bump_on(bump_starts, n_input_samples):
         f_targets[n,i_low:] = 1 # assign the bump
     return f_targets
 
-def bumps_all(n_switches=1, n_switch_points=5, bounds=(0,1), start="both", make_constants=False):
+def bumps_all(n_switches=1, n_switch_points=5, bounds=(0,1), start="both", make_constants=False, low=-3, high=3, inc=1):
+    '''low: lowest log10 value taken by a target
+       high: highest log10 value taken by a target
+    '''
     # note: bounds are arbitrary
 
     if start=="on":
@@ -103,7 +106,12 @@ def bumps_all(n_switches=1, n_switch_points=5, bounds=(0,1), start="both", make_
                     if switch_grid[j] in sp_vec:
                         # print('Switching at',j)
                         f[j:] = not(f[j-1])
-                f_targets.append(f)
+                for k in range(low,high):
+                    for j in range(k+1,high+1):
+                        f_k = np.copy(f)
+                        f_k[f==0] = 10**k
+                        f_k[f==1] = 10**j
+                        f_targets.append(f_k)
 
     # make targets an array
     f_targets = np.array(f_targets)

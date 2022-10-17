@@ -66,7 +66,7 @@ def minimize_wrapper(problem, algorithm, termination, seed=None, save_history=Tr
     return opt_list
 
 
-def plot_targets(output_dir, inputs, targets, fits=[], n_plots=4):
+def plot_targets(output_dir, inputs, targets, fits=[], n_plots=4, input_bounds=[1e-3,1e3], output_bounds=[1e-3,1e3]):
     os.makedirs(output_dir, exist_ok=True)
     n_targets = len(targets)
     nrows = min(n_plots, int(np.ceil(n_targets/n_plots)) )
@@ -85,7 +85,10 @@ def plot_targets(output_dir, inputs, targets, fits=[], n_plots=4):
                         axs[i,j].plot(inputs, fits[cc].T, '--', color=default_colors[0], linewidth=2)
                     except:
                         pass
-                    axs[i,j].set_xscale('log')
+                    # axs[i,j].set_yscale('log')
+                    # axs[i,j].set_xscale('log')
+                    axs[i,j].set(xlim=input_bounds, ylim=output_bounds, xscale='log', yscale='log')
+
                     axs[i,j].legend()
                     axs[-1,j].set_xlabel('[Input Monomer]')
 

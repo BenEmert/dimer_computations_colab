@@ -64,13 +64,15 @@ class TuneK:
                     input_ub = 3,
                     acc_lb = -3,
                     acc_ub = 3,
-                    param_lb = -6,
-                    param_ub = 6,
+                    param_lb = -5,
+                    param_ub = 7,
                     plot_inner_opt = True,
                     polish = False,
                     lsq_linear_method = 'bvls',
                     lsq_bounds = (0, np.Inf),
                     dimer_eps=1e-16,
+                    log_errors=True,
+                    no_rescaling=True,
                     nxsurface=10,
                     **kwargs):
         """
@@ -119,6 +121,8 @@ class TuneK:
         self.polish = polish
 
         self.dimer_eps = dimer_eps # threshold below which to set to 0 for equilibrium levels.
+        self.log_errors = log_errors # if True, computes errors w.r.t. target function as |log(f_target) - log(f_approx)|^2
+        self.no_rescaling = no_rescaling # sets all betas = 1 or 0
 
         self.lsq_bounds = lsq_bounds #(0, np.Inf)
 
@@ -144,6 +148,9 @@ class TuneK:
         self.make_output_dir()
 
         self.f_targets = set_target_library(n_input_samples=n_input_samples, target_lib_name=target_lib_name, target_lib_file=target_lib_file, n_switches=n_switches, n_switch_points=n_switch_points, start=start)
+        if self.log_errors:
+            self.f_targets = np.log10(self.f_targets)
+
         self.n_targets = self.f_targets.shape[0]
         self.f_targets_max_sq = np.max(self.f_targets, axis=1)**2
         self.f_targets_max_sq[self.f_targets_max_sq==0] = 1 #avoid divide by zero
@@ -153,7 +160,11 @@ class TuneK:
         self.set_opts()
 
     def plot_targets(self, output_dir, fits=None):
-        plot_targets(output_dir, self.input_concentration, self.f_targets, fits)
+        if self.log_errors: # convert to regular units, since plot_targets plots things in log-coordinates
+            f_targets = 10**self.f_targets
+            if fits is not None:
+                fits = 10**fits
+        plot_targets(output_dir, self.input_concentration, f_targets, fits)
 
     def set_target(self, F):
         '''Overwrite existing targets'''
@@ -440,6 +451,7 @@ class TuneK:
             else:
                 dimer_inds = np.random.choice(np.arange(self.n_dimers), size=N_plot_dimers, replace=False)
 
+            mse_list = []
             for n in range(N_subs):
                 fig, axs = plt.subplots(nrows=3, ncols=ncols, figsize = [ncols*7,21], squeeze=False)
                 plt.subplots_adjust(left=None, bottom=None, right=None, top=None, wspace=0.4, hspace=0.4)
@@ -452,7 +464,9 @@ class TuneK:
                     f_hat = self.predict(K, c0_acc, theta)
                     axs[0,cc].plot(self.input_concentration, f_hat, '--', color=default_colors[0])
                     axs[0,cc].set_xlabel('[Input Monomer]')
-                    axs[0,cc].set_title('Fitting target-{}: MSE {}'.format(j, round(self.mse(f_hat, self.f_targets[j]), 3)))
+                    mse_j = self.mse(f_hat, self.f_targets[j])
+                    mse_list += [mse_j]
+                    axs[0,cc].set_title('Fitting target-{}: MSE {}'.format(j, round(mse_j, 3)))
                     axs[0,cc].set_xscale('log')
                     axs[0,cc].legend()
 
@@ -468,7 +482,10 @@ class TuneK:
                     else:
                         axs[1,cc].plot(self.input_concentration, output_dimers, label=dimer_names)
                         axs[1,cc].set_title('[Output Dimers]')
-                        axs[1,cc].set_yscale('log')
+                        if self.log_errors:
+                            axs[1,cc].set_ylim([-3,3])
+                        else:
+                            axs[1,cc].set_yscale('log')
                         y = theta[dimer_inds]
 
                     axs[1,cc].set_xscale('log')
@@ -487,6 +504,7 @@ class TuneK:
                         axs[2,cc].set_title('Dimer Weights')
                         axs[2,cc].set_yscale('log')
 
+                fig.suptitle('Mean overall MSE = {}'.format(round(np.mean(mse_list),3)))
                 fig.savefig(os.path.join(outdir, 'plot{}.pdf'.format(n)), format='pdf')
                 plt.close()
 
@@ -567,6 +585,8 @@ class TuneK:
         if scale is None:
             scale = [None for j in range(n_betas)]
         elif len(scale)==1:
+            if scale[0] == 1:
+                scale = 1
             scale = [scale for j in range(n_betas)]
         foo_list = [self.try_lsq_linear(x[:,j].reshape(-1,1), y, scale=scale[j], fit=fit) for j in range(n_betas)]
         j_best = 0
@@ -585,6 +605,8 @@ class TuneK:
 
     def lsq_linear_wrapper(self, x, y, scale=None, one_scale=False):
         if self.single_beta:
+            if self.no_rescaling:
+                scale = [1]
             foo = self.find_best_beta(x, y, scale=scale, fit=not(one_scale))
         else:
             foo = self.try_lsq_linear(x, y)
@@ -606,9 +628,12 @@ class TuneK:
             theta_star = np.zeros((self.n_targets, dimers_j.shape[1]))
             mse_list = [0 for j in range(self.n_targets)]
             for j in range(self.n_targets):
-                scale = c0_acc[-self.n_scales:]
-                if apply_power_theta:
-                    scale = np.float_power(10, scale)
+                if self.n_scales > 0:
+                    scale = c0_acc[-self.n_scales:]
+                    if apply_power_theta:
+                        scale = np.float_power(10, scale)
+                else:
+                    scale = [1]
                 foo = self.lsq_linear_wrapper(x=dimers_all[j], y=self.f_targets[j], scale=scale, one_scale=True)
                 theta_star[j] = foo.x
                 mse_list[j] = np.sum(foo.fun**2) / self.n_input_samples / self.f_targets_max_sq[j]
@@ -683,7 +708,7 @@ class TuneK:
             f_obj = functools.partial(self.inner_opt, K=K, error_only=True)
             xl = [self.acc_lb]*(self.m-1)*self.n_targets
             xu = [self.acc_ub]*(self.m-1)*self.n_targets
-            if self.w_opt=='inner' and self.one_scale and self.single_beta:
+            if self.w_opt=='inner' and self.one_scale and self.single_beta and not(self.no_rescaling):
                 xl += [self.scale_bounds[0]]*self.n_scales
                 xu += [self.scale_bounds[1]]*self.n_scales
             problem = FunctionalProblem(
@@ -777,11 +802,11 @@ class TuneK:
                     theta_best, mse_total_best, mse_list_best = self.inner_opt(c0_acc_best, K)
                     if self.w_opt=='inner' and self.one_scale:
                         # convert c0_acc_best to a shaped array
-                        c0_acc_best = c0_acc_best[:-self.n_scales].reshape(self.n_targets,-1)
+                        if self.n_scales > 0:
+                            c0_acc_best = c0_acc_best[:-self.n_scales].reshape(self.n_targets,-1)
                     else:
                         # convert c0_acc_best to a shaped array
                         c0_acc_best = c0_acc_best.reshape(self.n_targets,-1)
-
 
                     info_dict = {'mse_best': mse_total_best,
                                  'mse_list_best': mse_list_best,
@@ -821,6 +846,8 @@ class TuneK:
                 n_scales = 1
             elif self.scale_type=="per-dimer":
                 n_scales = self.n_dimers
+            if self.no_rescaling:
+                n_scales = 0
             self.n_var = self.n_targets * (self.m-1) + n_scales
             self.n_scales = n_scales
         else:
@@ -846,7 +873,10 @@ class TuneK:
 
         dimers = sols[:,self.m:]
 
-        dimers = thresh2eps(dimers, eps=self.dimer_eps)
+        # dimers = thresh2eps(dimers, eps=self.dimer_eps)
+
+        if self.log_errors:
+            dimers = np.log10(dimers)
 
         return dimers
 
@@ -892,4 +922,8 @@ class TuneK:
         fits = self.predict_many(param_list)
 
         # plot fits
+        if self.log_errors: # convert to regular units, since plot_targets plots things in log-coordinates
+            f_targets = 10**self.f_targets
+            fits = 10**fits
+
         plot_targets(output_dir, self.input_concentration, self.f_targets, fits)
