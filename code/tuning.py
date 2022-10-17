@@ -913,6 +913,9 @@ class TuneK:
         return foo
 
     def get_params(self, c0_acc, theta, j):
+        if c0_acc.ndim==1 and theta.ndim==2:
+            return c0_acc, theta[0]
+        # NOTE: there may be more bugs here? check whether c0_acc is getting pulled correctly with right shape when this function is called
         if self.acc_opt=='inner':
             c0_acc = c0_acc[j]
         if self.w_opt=='inner':
