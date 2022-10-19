@@ -3,7 +3,10 @@ import pickle
 import numpy as np
 
 base = '../results/BoundedBumps_1.0_m3/'
-dir = 'nswitches-2_nswitchlocs-5_a-inner_w-inner_singleBeta-1_scaleType-per-dimer_m-3_plotInner-0_targetID-{}/maxiterO-10_popsizeO-25_polishO-1_maxiterK-25_popsizeK-10_polishK-1_start-both/10182022230141_acc-inner_weights-inner/FinalK_{}/run0/model_info.pkl'
+adir = 'nswitches-2_nswitchlocs-5_a-inner_w-inner_singleBeta-1_scaleType-per-dimer_m-3_plotInner-0_targetID-{}/maxiterO-10_popsizeO-25_polishO-1_maxiterK-25_popsizeK-10_polishK-1_start-both/'
+cdir = 'FinalK_{}/run0/model_info.pkl'
+
+base_a_dir = os.path.join(base, adir)
 
 D = 40 # number of input monomer concentrations
 N = 883 # number of targets
@@ -13,8 +16,10 @@ targets = np.zeros((N,D))
 fits = np.zeros((N,D,S))
 
 for n in range(N):
+    n_base = base_a_dir.format(n)
+    bdir = os.listdir(n_base)[0]
     for s in range(S):
-        fname = os.path.join(base, dir.format(n, s))
+        fname = os.path.join(n_base, bdir, cdir.format(s))
         # try:
         with open(fname, 'rb') as f:
             x = pickle.load(f)
@@ -28,5 +33,5 @@ for n in range(N):
 
 data = {'targets': targets, 'fits': fits}
 summary_fname = os.path.join(base, 'fit_summary.pkl')
-with open(summary_fname, 'a') as f:
+with open(summary_fname, 'wb') as f:
     pickle.dump(data, f)
