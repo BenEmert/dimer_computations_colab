@@ -15,16 +15,16 @@ fits = np.zeros((N,D,S))
 for n in range(N):
     for s in range(S):
         fname = os.path.join(base, dir.format(n, s))
-        try:
-            with open(fname, 'rb') as f:
-                x = pickle.load(f)
+        # try:
+        with open(fname, 'rb') as f:
+            x = pickle.load(f)
 
-            if n==0:
-                targets[n] = x['f_target']
-            fits[n,:,s] = x['f_fit']
-        except:
-            print('ID {}, round {} not available.'.format(n,s))
-            pass
+        if n==0:
+            targets[n] = x['f_target']
+        fits[n,:,s] = x['f_fit']
+        # except:
+        #     print('ID {}, round {} not available.'.format(n,s))
+        #     pass
 
 data = {'targets': targets, 'fits': fits}
 summary_fname = os.path.join(base, 'fit_summary.pkl')
