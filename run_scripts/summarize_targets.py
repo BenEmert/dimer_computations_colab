@@ -28,7 +28,7 @@ for n in range(N):
             with open(fname, 'rb') as f:
                 x = pickle.load(f)
 
-            if n==0:
+            if s==0:
                 targets[n] = x['f_target']
             fits[n,:,s] = x['f_fit']
         except:
