@@ -17,7 +17,11 @@ fits = np.zeros((N,D,S))
 
 for n in range(N):
     n_base = base_a_dir.format(n)
-    bdir = os.listdir(n_base)[0]
+    try:
+        bdir = os.listdir(n_base)[0]
+    except:
+        print('ID {} not available.'.format(n,s))
+        continue
     for s in range(S):
         fname = os.path.join(n_base, bdir, cdir.format(s))
         try:
