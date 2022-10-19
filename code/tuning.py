@@ -455,6 +455,7 @@ class TuneK:
             else:
                 dimer_inds = np.random.choice(np.arange(self.n_dimers), size=N_plot_dimers, replace=False)
 
+            f_hat_list = []
             mse_list = []
             for n in range(N_subs):
                 fig, axs = plt.subplots(nrows=3, ncols=ncols, figsize = [ncols*7,21], squeeze=False)
@@ -466,6 +467,7 @@ class TuneK:
                     c0_acc, theta = self.get_params(c0_acc_best, theta_best, j)
                     axs[0,cc].plot(self.input_concentration, self.f_targets[j], label='Target', color='black')
                     f_hat = self.predict(K, c0_acc, theta)
+                    f_hat_list.append(f_hat)
                     axs[0,cc].plot(self.input_concentration, f_hat, '--', color=default_colors[0])
                     axs[0,cc].set_xlabel('[Input Monomer]')
                     mse_j = self.mse(f_hat, self.f_targets[j])
@@ -558,13 +560,16 @@ class TuneK:
             fig.savefig(os.path.join(output_dir, 'logK.pdf'), format='pdf')
             plt.close()
 
+            # bp()
             # save results
             out = {'MSE': mse_best,
                     'MSE-per-target': mse_list_best,
                     'a': c0_acc_best,
                     'theta': theta_best,
                     'logK': K,
-                    'K': np.float_power(10, K)}
+                    'K': np.float_power(10, K),
+                    'f_fit': np.array(f_hat_list),
+                    'f_target': self.f_targets}
 
             dump_data(out, os.path.join(output_dir, 'model_info.pkl'), to_dict=False)
 
@@ -808,6 +813,8 @@ class TuneK:
                         # convert c0_acc_best to a shaped array
                         if self.n_scales > 0:
                             c0_acc_best = c0_acc_best[:-self.n_scales].reshape(self.n_targets,-1)
+                        else:
+                            c0_acc_best = c0_acc_best.reshape(self.n_targets,-1)
                     else:
                         # convert c0_acc_best to a shaped array
                         c0_acc_best = c0_acc_best.reshape(self.n_targets,-1)
@@ -933,4 +940,4 @@ class TuneK:
             f_targets = 10**self.f_targets
             fits = 10**fits
 
-        plot_targets(output_dir, self.input_concentration, self.f_targets, fits)
+        self.plot_targets(output_dir, fits)
