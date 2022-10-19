@@ -2,7 +2,7 @@ import os
 import pickle
 import numpy as np
 
-base = '/Users/matthewlevine/Downloads/hpc/dimers/BoundedBumps_1.0_m3/'
+base = '../results/BoundedBumps_1.0_m3/'
 dir = 'nswitches-2_nswitchlocs-5_a-inner_w-inner_singleBeta-1_scaleType-per-dimer_m-3_plotInner-0_targetID-{}/maxiterO-10_popsizeO-25_polishO-1_maxiterK-25_popsizeK-10_polishK-1_start-both/10182022230141_acc-inner_weights-inner/FinalK_{}/run0/model_info.pkl'
 
 D = 40 # number of input monomer concentrations
