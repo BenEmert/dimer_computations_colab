@@ -14,7 +14,7 @@ fits = np.zeros((N,D,S))
 
 for n in range(N):
     for s in range(S):
-        fname = os.path.join(base, ndir.format(n, s))
+        fname = os.path.join(base, dir.format(n, s))
         try:
             with open(fname, 'rb') as f:
                 x = pickle.load(f)
