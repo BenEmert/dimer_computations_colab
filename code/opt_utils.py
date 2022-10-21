@@ -66,7 +66,7 @@ def minimize_wrapper(problem, algorithm, termination, seed=None, save_history=Tr
     return opt_list
 
 
-def plot_targets(output_dir, inputs, targets, fits=[], n_plots=4, input_bounds=[1e-3,1e3], output_bounds=[1e-3,1e3]):
+def plot_targets(output_dir, inputs, targets, fits=[], n_plots=4, input_bounds=[1e-3,1e3], output_bounds=[1e-3,1e3], label_fits=False):
     os.makedirs(output_dir, exist_ok=True)
     n_targets = len(targets)
     nrows = min(n_plots, int(np.ceil(n_targets/n_plots)) )
@@ -82,7 +82,10 @@ def plot_targets(output_dir, inputs, targets, fits=[], n_plots=4, input_bounds=[
                 if cc < n_targets:
                     axs[i,j].plot(inputs, targets[cc], label='target', color='black', linewidth=4)
                     try:
-                        axs[i,j].plot(inputs, fits[cc].T, '--', color=default_colors[0], linewidth=2)
+                        if label_fits:
+                            axs[i,j].plot(inputs, fits[cc].T, '--', linewidth=2, label='fits')
+                        else:
+                            axs[i,j].plot(inputs, fits[cc].T, '--', color=default_colors[0], linewidth=2)
                     except:
                         pass
                     # axs[i,j].set_yscale('log')
@@ -90,6 +93,7 @@ def plot_targets(output_dir, inputs, targets, fits=[], n_plots=4, input_bounds=[
                     axs[i,j].set(xlim=input_bounds, ylim=output_bounds, xscale='log', yscale='log')
 
                     axs[i,j].legend()
+                    axs[i,j].set_title('Target {}'.format(cc))
                     axs[-1,j].set_xlabel('[Input Monomer]')
 
         fig.savefig(os.path.join(output_dir,'target_plot{}.pdf'.format(n)), format='pdf')
