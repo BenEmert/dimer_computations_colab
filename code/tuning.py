@@ -187,7 +187,7 @@ class TuneK:
         timestamp = time.strftime('%m%d%Y%H%M%S', t)
         base_nm = self.make_experiment_name()
         self.output_dir = os.path.join(self.base_dir, timestamp + '_' + base_nm)
-        os.makedirs(self.output_dir)
+        os.makedirs(self.output_dir, exist_ok=True)
 
     def make_experiment_name(self):
         foo = {'acc': self.acc_opt, 'weights': self.w_opt}
