@@ -57,6 +57,7 @@ TUNE_DICT['opt_settings_outer'] = make_opt_settings(FLAGS_optsetts.__dict__)
 
 # Settings for Differential Evolution optimizer over binding affinity K
 parser2 = argparse.ArgumentParser()
+parser2.add_argument('--dothreading_K', default=1, type=int)
 parser2.add_argument('--maxiter_K', default=3, type=int)
 parser2.add_argument('--popsize_K', default=20, type=int)
 parser2.add_argument('--polish_K', default=0, type=int)

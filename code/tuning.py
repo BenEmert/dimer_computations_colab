@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 import scipy.stats
 import itertools
+import multiprocessing
 from scipy.optimize import minimize, brute, differential_evolution
 
 from pymoo.problems.functional import FunctionalProblem
@@ -16,6 +17,7 @@ from pymoo.optimize import minimize
 from pymoo.util.termination.default import SingleObjectiveDefaultTermination
 from pymoo.algorithms.soo.nonconvex.de import DE
 from pymoo.operators.sampling.lhs import LHS
+from pymoo.core.problem import starmap_parallelized_eval
 from opt_utils import *
 
 # %load_ext watermark
@@ -227,7 +229,7 @@ class TuneK:
     def diff(self, x, ilow, ihigh):
         return x[ihigh] - x[ilow]
 
-    def optimize_binding(self, popsize=15, maxiter=10, seed=None, nstarts=1, polish=False, plot_surface=False, do_constraints=True, **kwargs):
+    def optimize_binding(self, popsize=15, maxiter=10, seed=None, nstarts=1, polish=False, plot_surface=False, do_constraints=True, dothreading=False, **kwargs):
 
         constr_iq = []
         if do_constraints:
@@ -243,14 +245,12 @@ class TuneK:
             xu=self.param_ub,
             constr_ieq=constr_iq)
 
-        do_threading = False
-        if do_threading:
-            # n_threads = 4
-            # pool = ThreadPool(n_threads)
-
+        if dothreading:
             # the number of processes to be used
             n_process = multiprocessing.cpu_count()
             pool = multiprocessing.Pool(n_process)
+
+            print('Running on {} CPUs'.format(n_process))
 
             problem.runner = pool.starmap
             problem.func_eval = starmap_parallelized_eval

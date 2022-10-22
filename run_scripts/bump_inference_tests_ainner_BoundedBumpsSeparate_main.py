@@ -11,6 +11,7 @@ parser.add_argument('--base_dir', default='../results/manybumps1switch_dev', typ
 parser.add_argument("--dev_run", default=0, type=int)
 parser.add_argument("--run_all", default=0, type=int)
 parser.add_argument("--id", default=0, type=int)
+parser.add_argument("--dothreading", default=1, type=int)
 FLAGS = parser.parse_args()
 
 mydict = {
@@ -60,11 +61,12 @@ def namemaker(x):
     nm = os.path.join(dirname, fname)
     return nm
 
-def run_main(sett):
+def run_main(sett, dothreading):
     sett['base_dir'] = os.path.join(sett['base_dir'], namemaker(sett))
 
     K_names = ['maxiter_K', 'popsize_K', 'polish_K', 'nstarts_K']
     sett_K = {k.split('_')[0]: sett[k] for k in K_names}
+    sett_K['dothreading'] = dothreading
 
     tune_names = ['maxiter_K', 'popsize_K', 'polish_K']
     sett['opt_settings_outer'] = {k.split('_')[0]: sett[k] for k in tune_names}
@@ -79,7 +81,7 @@ if __name__ == "__main__":
         df = pd.DataFrame()
         for sett in EXPERIMENT_LIST:
             try:
-                run_main(sett)
+                run_main(sett, dothreading=FLAGS.dothreading)
                 status = "FINISHED"
             except:
                 status = "FAILED"
@@ -92,4 +94,4 @@ if __name__ == "__main__":
             print(df.sort_values(by="status"))
     else:
         settings = EXPERIMENT_LIST[FLAGS.id]
-        run_main(settings)
+        run_main(settings, dothreading=FLAGS.dothreading)
