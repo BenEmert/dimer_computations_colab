@@ -11,28 +11,28 @@ parser.add_argument('--base_dir', default='../results/manybumps1switch_dev', typ
 parser.add_argument("--dev_run", default=0, type=int)
 parser.add_argument("--run_all", default=0, type=int)
 parser.add_argument("--id", default=0, type=int)
-parser.add_argument("--dothreading", default=1, type=int)
+parser.add_argument("--dothreading", default=0, type=int)
 FLAGS = parser.parse_args()
 
 mydict = {
     "base_dir": [FLAGS.base_dir],
     "target_lib_name": ["bumps_all"],
     "dimer_eps": [1e-16],
-    "n_switches": [2],# 2],
-    "n_switch_points": [5],
+    "n_switches": [1],# 2],
+    "n_switch_points": [3],
     "start": ["both"], #["on", "off", "both"],
-    "id_target": [i for i in range(882)],
-    "m": [3],
+    "id_target": [i for i in range(168)],
+    "m": [3, 5, 10, 20],
     "acc_opt": ["inner"],
     "w_opt": ["inner"],
     "single_beta": [1],
     "scale_type": ["per-dimer"], #"per-target"],
     "plot_inner_opt": [0],
     "maxiter_O": [10],
-    "popsize_O": [25],
-    "polish_O": [1],
+    "popsize_O": [50],
+    "polish_O": [0],
     "maxiter_K": [25],
-    "popsize_K": [10, 25],
+    "popsize_K": [60],
     "polish_K": [1],
     "nstarts_K": [2],
 }
@@ -77,6 +77,7 @@ def run_main(sett, dothreading):
 
 
 if __name__ == "__main__":
+    print('{} total experiments available'.format(len(EXPERIMENT_LIST)))
     if FLAGS.run_all:
         df = pd.DataFrame()
         for sett in EXPERIMENT_LIST:
