@@ -10,7 +10,7 @@ import pandas as pd
 import scipy.stats
 import itertools
 import multiprocessing
-from scipy.optimize import minimize, brute, differential_evolution
+from scipy.optimize import brute, differential_evolution
 
 from pymoo.problems.functional import FunctionalProblem
 from pymoo.optimize import minimize
@@ -60,7 +60,7 @@ class TuneK:
                     scale_bounds = (-14,14), # in log10 space
                     opt_settings_outer = {}, # use default settings for differential evolution
                     m = 3,
-                    n_input_samples = 40, #discretization of first monomer...time complexity scales linearly w.r.t. this parameter
+                    n_input_samples = 30, #discretization of first monomer...time complexity scales linearly w.r.t. this parameter
                     n_accessory_samples = 75, # number of latin-hypercube samples from the space of initial accessory concentrations...time complexity scales linearly w.r.t. this parameter
                     input_lb = -3,
                     input_ub = 3,
@@ -263,7 +263,7 @@ class TuneK:
             n_last=20,
             n_max_gen=maxiter)
 
-        algorithm = DE(CR=0.9, pop_size=popsize*n_var)
+        algorithm = DE(CR=0.9, pop_size=popsize)
 
         res_list = []
         for ns in range(nstarts):
@@ -865,8 +865,7 @@ class TuneK:
             self.n_var = self.m-1
 
 
-        self.algorithm = DE(CR=0.9,
-            pop_size=(self.m-1) * self.opt_settings_outer['popsize'])
+        self.algorithm = DE(CR=0.9, pop_size=self.opt_settings_outer['popsize'])
 
     def g1(self, c0_acc, K, apply_power_K=True, apply_power_c0=True):
         # for 1d -> 1d predictions, we have each row of C0 being the same EXCEPT in its first column,
