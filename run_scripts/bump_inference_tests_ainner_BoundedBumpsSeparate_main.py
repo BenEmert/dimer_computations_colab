@@ -31,8 +31,8 @@ mydict = {
     "maxiter_O": [10],
     "popsize_O": [50],
     "polish_O": [0],
-    "maxiter_K": [25],
-    "popsize_K": [60],
+    "maxiter_K": [1, 10, 25],
+    "popsize_K": [100],
     "polish_K": [1],
     "nstarts_K": [2],
 }
