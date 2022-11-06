@@ -151,7 +151,6 @@ class TuneK:
         self.make_output_dir()
 
         self.f_targets = set_target_library(n_input_samples=n_input_samples, target_lib_name=target_lib_name, target_lib_file=target_lib_file, n_switches=n_switches, n_switch_points=n_switch_points, start=start)
-        print('{} total targets available'.format(self.f_targets.shape[0]))
         if id_target is not None:
             self.f_targets = self.f_targets[id_target].reshape(1,-1)
 

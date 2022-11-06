@@ -22,7 +22,7 @@ mydict = {
     "n_switch_points": [3],
     "start": ["both"], #["on", "off", "both"],
     "id_target": [i for i in range(168)],
-    "m": [3, 5, 10, 20],
+    "m": [3, 4, 5, 10, 20],
     "acc_opt": ["inner"],
     "w_opt": ["inner"],
     "single_beta": [1],
@@ -40,8 +40,8 @@ mydict = {
 if FLAGS.dev_run:
     mydict['maxiter_O'] = [2]
     mydict['maxiter_K'] = [3]
-    mydict['popsize_O'] = [1]
-    mydict['popsize_K'] = [2]
+    mydict['popsize_O'] = [20]
+    mydict['popsize_K'] = [15]
     mydict['polish_K'] = [0]
     mydict['polish_O'] = [0]
 
