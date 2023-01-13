@@ -68,7 +68,7 @@ def run_main(sett, dothreading):
     sett_K = {k.split('_')[0]: sett[k] for k in K_names}
     sett_K['dothreading'] = dothreading
 
-    tune_names = ['maxiter_K', 'popsize_K', 'polish_K']
+    tune_names = ['maxiter_O', 'popsize_O', 'polish_O']
     sett['opt_settings_outer'] = {k.split('_')[0]: sett[k] for k in tune_names}
 
     n_iters = sett_K['maxiter']*sett_K['popsize']*sett['opt_settings_outer']['maxiter']*sett['opt_settings_outer']['popsize']
