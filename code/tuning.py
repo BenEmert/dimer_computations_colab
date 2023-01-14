@@ -15,7 +15,10 @@ from scipy.optimize import brute, differential_evolution
 from pymoo.problems.functional import FunctionalProblem
 from pymoo.optimize import minimize
 from pymoo.util.termination.default import SingleObjectiveDefaultTermination
+from pymoo.core.population import Population
 from pymoo.algorithms.soo.nonconvex.de import DE
+from pymoo.algorithms.soo.nonconvex.ga import GA
+from pymoo.algorithms.soo.nonconvex.nelder_mead import NelderMead
 from pymoo.operators.sampling.lhs import LHS
 from pymoo.core.problem import starmap_parallelized_eval
 from opt_utils import *
@@ -66,8 +69,8 @@ class TuneK:
                     input_ub = 3,
                     acc_lb = -3,
                     acc_ub = 3,
-                    param_lb = -5,
-                    param_ub = 7,
+                    param_lb = -10, #-5,
+                    param_ub = 7, # 7,
                     plot_inner_opt = True,
                     polish = False,
                     lsq_linear_method = 'bvls',
@@ -77,6 +80,7 @@ class TuneK:
                     no_rescaling=True,
                     nxsurface=10,
                     id_target=None,
+                    grid_dir='/Users/matthewlevine/Downloads',
                     **kwargs):
         """
         Run simulations for dimer networks of size m and input titration size t
@@ -164,6 +168,51 @@ class TuneK:
         self.plot_targets(output_dir=self.output_dir)
 
         self.set_opts()
+        self.brute_info_dict, (self.K_sorted, self.c0_sorted, self.mse_sorted) = self.get_brute_K(grid_dir)
+        self.set_opts()
+
+    def get_brute_K(self, grid_dir):
+
+        curve_path = os.path.join(grid_dir, '{}m_S_all.npy'.format(self.m))
+        jacob = np.load(curve_path, allow_pickle=True) #.reshape(30,-1) # 30 x dimers x N
+
+        ### NOTE: the first entries belong to K, then the last few entries belong to accessory a.
+        param_path = os.path.join(grid_dir, '{}m_K_A_param_sets.npy'.format(self.m))
+        params = np.load(param_path, allow_pickle=True) #.reshape(-1) #.reshape(30,-1) # 30 x dimers x N
+
+        # for i_dimer in range(10): #range(jacob.shape[1]):
+        mse_vec = np.zeros(jacob.shape[2])
+        for i_param in range(jacob.shape[2]):
+            # guessing that the first N belong to the
+            dimers = np.log10(jacob[:,-self.n_dimers:,i_param])
+            theta_star, mse_total, mse_list = self.simple_loss(dimers)
+            mse_vec[i_param] = mse_total
+
+        #order the curves by increasing mse!
+        inds = np.argsort(mse_vec)
+
+        mse_sorted = mse_vec[inds]
+        params_sorted = np.log10(params[inds])
+
+        K_sorted = params_sorted[:,:self.n_dimers]
+        c0_sorted = params_sorted[:,self.n_dimers:] #.reshape(1,-1)
+
+        # re-order each param entry so that it obeys the descending constraint (for uniqueness)
+        n_input = 1
+        for j in range(K_sorted.shape[0]):
+            K_sorted[j], new_inds = sort_K_ascending(K_sorted[j], self.m, n_input=n_input)
+            c0_inds = new_inds[self.acc_monomer_ind] - n_input
+            c0_sorted[j] = c0_sorted[j,c0_inds]
+
+        # store optimal params
+        # check `make_opt_output_list` to see when this shape fails. should be fine for now.
+        K = K_sorted[0]
+        c0 = c0_sorted[0]
+        opt_list = [DotDict({'X': c0})]
+        info_dict = self.make_opt_output_list(opt_list, K)[0]
+        info_dict['K'] = K
+
+        return info_dict, (K_sorted, c0_sorted, mse_sorted)
 
     def plot_targets(self, output_dir, fits=None):
         if self.log_errors: # convert to regular units, since plot_targets plots things in log-coordinates
@@ -263,7 +312,16 @@ class TuneK:
             n_last=20,
             n_max_gen=maxiter)
 
-        algorithm = DE(CR=0.9, pop_size=popsize)
+        try:
+            X = self.K_sorted[:popsize]
+            F = self.mse_sorted[:popsize]
+            pop = Population.new("X", X) #, "F", F)
+            algorithm = GA(pop_size=popsize, sampling=pop)
+        except:
+            print('UNABLE to initialize at brute force results')
+            algorithm = GA(pop_size=popsize)
+        # algorithm = DE(CR=0.9, pop_size=popsize, sampling=pop)
+        # algorithm = NelderMead(x0=X[0])
 
         res_list = []
         for ns in range(nstarts):
@@ -621,6 +679,77 @@ class TuneK:
             foo = self.try_lsq_linear(x, y)
         return foo
 
+    def simple_loss(self, dimers_all, apply_power_theta=True, error_only=False):
+        if self.acc_opt=='inner' and self.w_opt=='inner' and self.one_scale and self.single_beta:
+            theta_star = np.zeros((self.n_targets, dimers_all.shape[1]))
+            mse_list = [0 for j in range(self.n_targets)]
+            for j in range(self.n_targets):
+                if self.n_scales > 0:
+                    scale = c0_acc[-self.n_scales:]
+                    if apply_power_theta:
+                        scale = np.float_power(10, scale)
+                else:
+                    scale = [1]
+                foo = self.lsq_linear_wrapper(x=dimers_all, y=self.f_targets[j], scale=scale, one_scale=True)
+                theta_star[j] = foo.x
+                mse_list[j] = np.sum(foo.fun**2) / self.n_input_samples / self.f_targets_max_sq[j]
+            mse_total = np.mean(mse_list) # average over targets
+            if error_only:
+                return mse_total
+            else:
+                return theta_star, mse_total, mse_list
+
+        elif self.acc_opt=='inner' and self.w_opt=='inner' and not(self.one_scale):
+            pass
+            # dimers = self.g1(c0_acc, K) # 40 x 9
+            # foo = self.lsq_linear_wrapper(x=dimers, y=self.f_targets[j_target])
+            # theta_star_j = foo.x
+            # mse_j = np.sum(foo.fun**2) / self.n_input_samples / self.f_targets_max_sq[j_target]
+            # mse_j /= self.n_targets # average over targets
+            # if error_only:
+            #     return mse_j
+            # else:
+            #     return theta_star_j, mse_j
+        elif self.acc_opt=='inner' and self.w_opt=='outer':
+            # dimers_all = []
+            # for j in range(self.n_targets):
+            #     i_low = j*(self.m-1)
+            #     i_high = i_low + (self.m-1)
+            #     dimers_j = self.g1(c0_acc[i_low:i_high], K) # 40 x 9
+            #     dimers_all += [dimers_j]
+            targets_all = self.f_targets.reshape(-1) #(40*n,)
+            # dimers_all = np.vstack(dimers_all)
+            foo = self.lsq_linear_wrapper(x=dimers_all, y=targets_all)
+            theta_star = foo.x
+            mse_total = np.sum(foo.fun**2) / self.n_input_samples / np.sum(self.f_targets_max_sq) / self.n_targets
+
+            # compute listed MSEs
+            mse_list = [0 for j in range(self.n_targets)]
+            for j in range(self.n_targets):
+                i_low = j*(self.n_input_samples)
+                i_high = i_low + self.n_input_samples
+                mse_list[j] = np.sum(foo.fun[i_low:i_high]**2) / self.n_input_samples / self.f_targets_max_sq[j]
+            if error_only:
+                return mse_total
+            else:
+                return theta_star, mse_total, mse_list
+        elif self.acc_opt=='outer' and self.w_opt=='inner':
+            # dimers = self.g1(c0_acc, K) # 40 x 9
+            theta_star = np.zeros((self.n_targets, dimers_all.shape[1]))
+            mse_list = [0 for j in range(self.n_targets)]
+            for j in range(self.n_targets):
+                foo = self.lsq_linear_wrapper(x=dimers_all, y=self.f_targets[j])
+                theta_star[j] = foo.x
+                mse_list[j] = np.sum(foo.fun**2) / self.n_input_samples / self.f_targets_max_sq[j]
+            mse_total = np.mean(mse_list)
+            if error_only:
+                return mse_total
+            else:
+                return theta_star, mse_total, mse_list
+        else:
+            pass
+
+
     def inner_opt(self, c0_acc, K, j_target=None, error_only=False, apply_power_theta=True):
         '''This function computes optimal linear weights and the associated errors incurred for these optimal weights.'''
         if self.acc_opt=='inner' and self.w_opt=='inner' and self.one_scale and self.single_beta:
@@ -864,8 +993,9 @@ class TuneK:
         else:
             self.n_var = self.m-1
 
-
-        self.algorithm = DE(CR=0.9, pop_size=self.opt_settings_outer['popsize'])
+        popsize = self.opt_settings_outer['popsize']
+        # self.algorithm = GA(pop_size=popsize)
+        self.algorithm = DE(CR=0.9, pop_size=popsize)
 
     def g1(self, c0_acc, K, apply_power_K=True, apply_power_c0=True):
         # for 1d -> 1d predictions, we have each row of C0 being the same EXCEPT in its first column,
