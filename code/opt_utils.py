@@ -66,7 +66,7 @@ def minimize_wrapper(problem, algorithm, termination, seed=None, save_history=Tr
     return opt_list
 
 
-def plot_targets(output_dir, inputs, targets, fits=[], n_plots=4, input_bounds=[1e-3,1e3], output_bounds=[1e-3,1e3], label_fits=False):
+def plot_targets(output_dir, inputs, targets, fits=[], n_plots=4, input_bounds=[1e-3,1e3], output_bounds=[1e-3,1e3], label_fits=False, fit_label='fits'):
     os.makedirs(output_dir, exist_ok=True)
     n_targets = len(targets)
     nrows = min(n_plots, int(np.ceil(n_targets/n_plots)) )
@@ -83,7 +83,7 @@ def plot_targets(output_dir, inputs, targets, fits=[], n_plots=4, input_bounds=[
                     axs[i,j].plot(inputs, targets[cc], label='target', color='black', linewidth=4)
                     try:
                         if label_fits:
-                            axs[i,j].plot(inputs, fits[cc].T, '--', linewidth=2, label='fits')
+                            axs[i,j].plot(inputs, fits[cc].T, '--', linewidth=2, label=fit_label)
                         else:
                             axs[i,j].plot(inputs, fits[cc].T, '--', color=default_colors[0], linewidth=2)
                     except:
@@ -98,6 +98,65 @@ def plot_targets(output_dir, inputs, targets, fits=[], n_plots=4, input_bounds=[
 
         fig.savefig(os.path.join(output_dir,'target_plot{}.pdf'.format(n)), format='pdf')
         plt.close()
+
+def plot_targets2(output_dir, inputs, targets, fits, jacob_fits, m_list, n_plots=4, input_bounds=[1e-3,1e3], output_bounds=[1e-3,1e3], label_fits=False, fit_label='fits', nm='mse'):
+
+    '''fits: (n_targets, n_inputs, n_runs, n_m_vals)'''
+    linestyles = ['dotted', 'dashed', 'dashdot', 'loosely dotted', 'densely dotted', 'dashdotted']
+    nT, nI, nR, nM = fits.shape
+    os.makedirs(output_dir, exist_ok=True)
+    n_targets = len(targets)
+    nrows = min(n_plots, int(np.ceil(n_targets/n_plots)) )
+    ncols = min(n_plots, int(np.ceil(n_targets/nrows)) )
+    N_subs = int(np.ceil(n_targets / (nrows*ncols)))
+    cc = -1
+    for n in range(N_subs):
+        fig, axs = plt.subplots(nrows=nrows, ncols=ncols, figsize = [ncols*5,nrows*3], squeeze=False, sharex=True, sharey=True)
+        plt.subplots_adjust(left=None, bottom=None, right=None, top=None, wspace=0.4, hspace=0.4)
+        for i in range(nrows):
+            for j in range(ncols):
+                cc += 1
+                if cc < n_targets:
+                    axs[i,j].plot(inputs, targets[cc], label='target', color='black', linewidth=4)
+
+                    # extract relevant fits
+                    foo = fits[cc]
+                    for tt in range(nM):
+                        for ss in range(nR):
+                            if ss==0:
+                                label = 'M={}'.format(m_list[tt])
+                                axs[i,j].plot(inputs, jacob_fits[cc,:,tt].T, 'x', color=default_colors[tt], linewidth=2, label=label+' grid')
+                            else:
+                                label = None
+                            try:
+                                axs[i,j].plot(inputs, fits[cc,:,ss,tt].T, color=default_colors[tt], linewidth=2, label=label, linestyle=linestyles[tt])
+                            except:
+                                pass
+
+                    # axs[i,j].set_yscale('log')
+                    # axs[i,j].set_xscale('log')
+                    axs[i,j].set(xlim=input_bounds, ylim=output_bounds, xscale='log', yscale='log')
+                    if i==(nrows-1) and j==(ncols-1):
+                        axs[i,j].legend()
+                    axs[i,j].set_title('Target {}'.format(cc))
+                    axs[-1,j].set_xlabel('[Input Monomer]')
+
+        fig.savefig(os.path.join(output_dir,'target_{}_plot{}.pdf'.format(nm,n)), format='pdf')
+        plt.close()
+
+def plot_avg_err(output_dir, avg_err, jacob_avg_err, m_list, nm='mse', caption='Average MSE per target'):
+    '''fits: (n_targets, n_inputs, n_runs, n_m_vals)'''
+    os.makedirs(output_dir, exist_ok=True)
+    fig, ax = plt.subplots(nrows=1, ncols=1, figsize = [10,10])
+    ax.plot(m_list, avg_err, '-o', label='optimization')
+    ax.plot(m_list, jacob_avg_err, '-o', label='grid')
+    ax.legend()
+    ax.set_xlabel('Network size')
+    ax.set_ylabel(caption)
+    ax.set_title(caption)
+    plt.subplots_adjust(left=None, bottom=None, right=None, top=None, wspace=0.4, hspace=0.4)
+    fig.savefig(os.path.join(output_dir,'avg_{}.pdf'.format(nm)), format='pdf')
+    plt.close()
 
 class AnalyzePymoo:
     def __init__(self, opt_list,
