@@ -168,8 +168,11 @@ class TuneK:
         self.plot_targets(output_dir=self.output_dir)
 
         self.set_opts()
-        self.brute_info_dict, (self.K_sorted, self.c0_sorted, self.mse_sorted) = self.get_brute_K(grid_dir)
-        self.set_opts()
+        try:
+            self.brute_info_dict, (self.K_sorted, self.c0_sorted, self.mse_sorted) = self.get_brute_K(grid_dir)
+            self.set_opts()
+        except:
+            print('COULD NOT LOAD GRID DATA from', grid_dir)
 
     def get_brute_K(self, grid_dir):
 

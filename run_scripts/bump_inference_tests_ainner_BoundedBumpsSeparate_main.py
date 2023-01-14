@@ -8,6 +8,7 @@ from pdb import set_trace as bp
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--base_dir', default='../results/manybumps1switch_dev', type=str) # base directory for output
+parser.add_argument('--grid_dir', default='../data/sims', type=str) # base directory for output
 parser.add_argument("--dev_run", default=0, type=int)
 parser.add_argument("--run_all", default=0, type=int)
 parser.add_argument("--id", default=0, type=int)
@@ -15,6 +16,7 @@ parser.add_argument("--dothreading", default=0, type=int)
 FLAGS = parser.parse_args()
 
 mydict = {
+    "grid_dir": [FLAGS.grid_dir],
     "base_dir": [FLAGS.base_dir],
     "target_lib_name": ["bumps_all"],
     "dimer_eps": [1e-16],
