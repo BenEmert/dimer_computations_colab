@@ -313,3 +313,27 @@ def get_poly_vertices(n, r = 1, dec = 3, start = math.pi/4):
     x = np.array([round(r * math.cos(2*math.pi*i/n+start), dec) for i in range(n)])
     y = np.array([round(r * math.sin(2*math.pi*i/n+start), dec) for i in range(n)])
     return x,y
+
+def sort_K_ascending(K, m, n_input=1):
+    # re-indexes K matrix so that diagonals (after inputs) are ordered in descending.
+    if K.ndim==1:
+        K = make_K_matrix(K, m)
+        reshape = True
+    else:
+        reshape = False
+
+    # get the non-input reordered indices
+    new_inds = np.flip(np.argsort(np.diag(K)[n_input:])) + n_input
+
+    # concatenate w/ the permanent input indices
+    new_inds = np.hstack((np.arange(n_input), new_inds))
+
+    Knew = np.zeros((m,m))
+    for i in range(m):
+        for j in range(m):
+            Knew[i,j] = K[new_inds[i], new_inds[j]]
+
+    if reshape:
+        Knew = Knew[np.triu_indices(m)]
+
+    return Knew, new_inds
