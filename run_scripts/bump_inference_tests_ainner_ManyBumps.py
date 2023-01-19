@@ -29,6 +29,7 @@ FLAGS_run, __ = parser0.parse_known_args()
 parser1 = argparse.ArgumentParser()
 ## Settings for TuneK
 parser1.add_argument('--base_dir', default='../results/manyBumps/a-inner_w-outer/', type=str) # base directory for output
+parser1.add_argument('--grid_dir', default='../data/sims', type=str) # base directory for output
 parser1.add_argument('--target_lib_name', default='bumps_all', type=str) # Name for target library
 parser1.add_argument('--start', default='both', type=str)
 parser1.add_argument('--n_switches', default=2, type=int) # number of switches in bump library
