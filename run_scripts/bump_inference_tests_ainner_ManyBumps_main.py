@@ -8,6 +8,7 @@ from pdb import set_trace as bp
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--base_dir', default='../results/manybumps1switch_dev', type=str) # base directory for output
+parser.add_argument('--grid_dir', default='../data/sims', type=str) # base directory for output
 parser.add_argument("--dev_run", default=0, type=int)
 parser.add_argument("--run_all", default=0, type=int)
 parser.add_argument("--id", default=0, type=int)
