@@ -173,6 +173,7 @@ class TuneK:
             self.set_opts()
         except:
             print('COULD NOT LOAD GRID DATA from', grid_dir)
+            print('Currently in ', os.getcwd())
 
     def get_brute_K(self, grid_dir):
 
