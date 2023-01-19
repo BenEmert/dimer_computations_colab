@@ -80,7 +80,7 @@ class TuneK:
                     no_rescaling=True,
                     nxsurface=10,
                     id_target=None,
-                    grid_dir='/Users/matthewlevine/Downloads',
+                    grid_dir=None,
                     **kwargs):
         """
         Run simulations for dimer networks of size m and input titration size t
