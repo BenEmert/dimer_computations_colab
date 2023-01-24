@@ -999,7 +999,8 @@ class TuneK:
 
         popsize = self.opt_settings_outer['popsize']
         # self.algorithm = GA(pop_size=popsize)
-        self.algorithm = DE(CR=0.9, pop_size=popsize)
+        # self.algorithm = DE(CR=0.9, pop_size=popsize)
+        self.algorithm = NelderMead(x0=self.c0_sorted[0])
 
     def g1(self, c0_acc, K, apply_power_K=True, apply_power_c0=True):
         # for 1d -> 1d predictions, we have each row of C0 being the same EXCEPT in its first column,
