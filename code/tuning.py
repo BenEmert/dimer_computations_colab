@@ -283,52 +283,60 @@ class TuneK:
         return x[ihigh] - x[ilow]
 
     def optimize_binding(self, popsize=15, maxiter=10, seed=None, nstarts=1, polish=False, plot_surface=False, do_constraints=True, dothreading=False, **kwargs):
-
-        constr_iq = []
-        if do_constraints:
-            ind_list = get_diag_inds(n_input=1, n_accesory=self.m-1, m = self.m)[1:] # ignore first homodimer
-            constr_iq = [functools.partial(self.diff, ilow=ind_list[j-1], ihigh=ind_list[j])
-                            for j in range(1,len(ind_list)) ]
-
-        n_var = len(self.param_lb)
-        problem = FunctionalProblem(
-            n_var=n_var,
-            objs=self.loss_k,
-            xl=self.param_lb,
-            xu=self.param_ub,
-            constr_ieq=constr_iq)
-
-        if dothreading:
-            # the number of processes to be used
-            n_process = multiprocessing.cpu_count()
-            pool = multiprocessing.Pool(n_process)
-
-            print('Running on {} CPUs'.format(n_process))
-
-            problem.runner = pool.starmap
-            problem.func_eval = starmap_parallelized_eval
-
-        termination = SingleObjectiveDefaultTermination(
-            x_tol=1e-6,
-            cv_tol=0.0,
-            f_tol=1e-6,
-            nth_gen=max(1, int(maxiter/4)),
-            n_last=20,
-            n_max_gen=maxiter)
-
-        try:
-            X = self.K_sorted[:popsize]
-            F = self.mse_sorted[:popsize]
-            pop = Population.new("X", X) #, "F", F)
-            algorithm = GA(pop_size=popsize, sampling=pop)
-        except:
-            print('UNABLE to initialize at brute force results')
-            algorithm = GA(pop_size=popsize)
-        # algorithm = DE(CR=0.9, pop_size=popsize, sampling=pop)
-        # algorithm = NelderMead(x0=X[0])
-
         res_list = []
+
         for ns in range(nstarts):
+
+            constr_iq = []
+            if do_constraints:
+                ind_list = get_diag_inds(n_input=1, n_accesory=self.m-1, m = self.m)[1:] # ignore first homodimer
+                constr_iq = [functools.partial(self.diff, ilow=ind_list[j-1], ihigh=ind_list[j])
+                                for j in range(1,len(ind_list)) ]
+
+            n_var = len(self.param_lb)
+            problem = FunctionalProblem(
+                n_var=n_var,
+                objs=self.loss_k,
+                xl=self.param_lb,
+                xu=self.param_ub,
+                constr_ieq=constr_iq)
+
+            if dothreading:
+                # the number of processes to be used
+                n_process = multiprocessing.cpu_count()
+                pool = multiprocessing.Pool(n_process)
+
+                print('Running on {} CPUs'.format(n_process))
+
+                problem.runner = pool.starmap
+                problem.func_eval = starmap_parallelized_eval
+
+            termination = SingleObjectiveDefaultTermination(
+                x_tol=1e-6,
+                cv_tol=0.0,
+                f_tol=1e-6,
+                nth_gen=max(1, int(maxiter/4)),
+                n_last=20,
+                n_max_gen=maxiter)
+
+            try:
+                X = self.K_sorted[:popsize]
+                F = self.mse_sorted[:popsize]
+                pop = Population.new("X", X) #, "F", F)
+                algorithm = GA(pop_size=popsize, sampling=pop)
+            except:
+                print('UNABLE to initialize at brute force results')
+                algorithm = GA(pop_size=popsize)
+            # algorithm = DE(CR=0.9, pop_size=popsize, sampling=pop)
+            # algorithm = NelderMead(x0=X[0])
+
+
+        # try to add brute force grid to results
+        # try:
+        #     # res =
+        #     res_list += [res]
+        # except:
+        #     print('Unable to add brute force solution to result list.')
             res = minimize(
                 problem,
                 algorithm,
