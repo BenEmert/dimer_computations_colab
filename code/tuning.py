@@ -1001,13 +1001,14 @@ class TuneK:
         # self.algorithm = GA(pop_size=popsize)
         # self.algorithm = DE(CR=0.9, pop_size=popsize)
         try:
-            X = self.c0_sorted[:popsize]
-            pop = Population.new("X", X) #, "F", F)
-            self.algorithm = GA(pop_size=popsize, sampling=pop)
+            self.algorithm = NelderMead(x0=self.c0_sorted[0])
+            # self.algorithm = NelderMead() #=self.c0_sorted[0])
+            # pop = Population.new("X", X) #, "F", F)
+            # self.algorithm = GA(pop_size=popsize, sampling=pop, eliminate_duplicates=False)
             print('Successfully initialized Inner Opt at grid opt.')
         except:
             self.algorithm = GA(pop_size=popsize)
-            print('Unable to initialize Inner Opt at grid opt. Defaulting to LHS initialization.')
+            print('Unable to initialize Inner Opt at grid opt. Defaulting to random init.')
 
 
     def g1(self, c0_acc, K, apply_power_K=True, apply_power_c0=True):
