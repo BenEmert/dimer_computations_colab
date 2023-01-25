@@ -199,7 +199,12 @@ class TuneK:
         params_sorted = np.log10(params[inds])
 
         K_sorted = params_sorted[:,:self.n_dimers]
+        K_sorted[K_sorted < self.param_lb] = self.param_lb[0]
+        K_sorted[K_sorted > self.param_ub] = self.param_ub[0]
+
         c0_sorted = params_sorted[:,self.n_dimers:] #.reshape(1,-1)
+        c0_sorted[c0_sorted < self.acc_lb] = self.acc_lb
+        c0_sorted[c0_sorted > self.acc_ub] = self.acc_ub
 
         # re-order each param entry so that it obeys the descending constraint (for uniqueness)
         n_input = 1
