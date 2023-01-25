@@ -1001,11 +1001,13 @@ class TuneK:
         # self.algorithm = GA(pop_size=popsize)
         # self.algorithm = DE(CR=0.9, pop_size=popsize)
         try:
-            self.algorithm = NelderMead(x0=self.c0_sorted[0])
-            print('Successfully initialized Inner NelderMead at grid opt')
+            X = self.c0_sorted[:popsize]
+            pop = Population.new("X", X) #, "F", F)
+            self.algorithm = GA(pop_size=popsize, sampling=pop)
+            print('Successfully initialized Inner Opt at grid opt.')
         except:
-            self.algorithm = DE(CR=0.9, pop_size=popsize)
-            print('Unable to initialize Inner NelderMead at grid opt. Defaulting to Differential Evolution')
+            self.algorithm = GA(pop_size=popsize)
+            print('Unable to initialize Inner Opt at grid opt. Defaulting to LHS initialization.')
 
 
     def g1(self, c0_acc, K, apply_power_K=True, apply_power_c0=True):
