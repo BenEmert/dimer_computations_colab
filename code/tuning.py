@@ -183,6 +183,23 @@ class TuneK:
         ### NOTE: the first entries belong to K, then the last few entries belong to accessory a.
         param_path = os.path.join(grid_dir, '{}m_K_A_param_sets.npy'.format(self.m))
         params = np.load(param_path, allow_pickle=True) #.reshape(-1) #.reshape(30,-1) # 30 x dimers x N
+        params = np.log10(params)
+        param_ub = np.max(params, 0)
+        param_lb = np.min(params, 0)
+        print('Grid upper bounds:', param_ub)
+        print('Grid lower bounds:', param_lb)
+
+        ub_stack = np.hstack((self.param_ub,self.acc_ub_list))
+        lb_stack = np.hstack((self.param_lb,self.acc_lb_list))
+        print('Optimization upper bounds:', ub_stack)
+        print('Optimization lower bounds:', lb_stack)
+
+        ub_violate = ub_stack < param_ub
+        lb_violate = lb_stack > param_lb
+        if any(ub_violate):
+            print('Grid violates upper bounds!', ub_violate)
+        if any(lb_violate):
+            print('Grid violates lower bounds!', lb_violate)
 
         # for i_dimer in range(10): #range(jacob.shape[1]):
         mse_vec = np.zeros(jacob.shape[2])
@@ -196,7 +213,7 @@ class TuneK:
         inds = np.argsort(mse_vec)
 
         mse_sorted = mse_vec[inds]
-        params_sorted = np.log10(params[inds])
+        params_sorted = params[inds]
 
         K_sorted = params_sorted[:,:self.n_dimers]
         K_sorted[K_sorted < self.param_lb] = self.param_lb[0]
@@ -220,6 +237,13 @@ class TuneK:
         opt_list = [DotDict({'X': c0})]
         info_dict = self.make_opt_output_list(opt_list, K)[0]
         info_dict['K'] = K
+
+        print('Printing best grid element...')
+        print('K:', K_sorted[0])
+        print('c0:', c0_sorted[0])
+        print('MSE = ', mse_sorted[0])
+        # double check stuff:
+        print('Re-check MSE:', self.simple_loss(self.g1(c0, K)))
 
         return info_dict, (K_sorted, c0_sorted, mse_sorted)
 
@@ -371,14 +395,21 @@ class TuneK:
             analyzeOpt = AnalyzePymoo([res], self.Knames, truth=self.truth['K'])
             analyzeOpt.make_plots(os.path.join(self.output_dir, extra_nm))
 
+            ## Compare to grid_K
+            # dimers = self.g1(self.c0)
+            opt_diff = k_opt_loss - self.mse_sorted[0]
+            if opt_diff > 0:
+                print('UH OH----Optimization performed WORSE than its grid-based initialization by amount', opt_diff)
+
             # make some plots with the optimal K
             output_dir = os.path.join(self.output_dir, extra_nm)
             info_dict = self.outer_opt(k_opt, make_plots=False, verbose=False)[0] # returns list of optimization results for K
             info_dict['K'] = k_opt
+            print(info_dict)
             self.plot_many_fits(output_dir, [info_dict])
 
-            percentile_list = [0, 1, 10, 50, 100]
-            n_examples = 10
+            percentile_list = [0] #[0, 1, 10, 50, 100]
+            n_examples = 1
             for j in range(len(percentile_list)-1):
                 k_examples = analyzeOpt.sample_X_from_grid(p_low=percentile_list[j], p_high=percentile_list[j+1], n=n_examples)
                 param_list = []
