@@ -36,14 +36,15 @@ mydict = {
     "maxiter_K": [1, 10, 25],
     "popsize_K": [100],
     "polish_K": [1],
-    "nstarts_K": [2],
+    "nstarts_K": [1],
 }
 
 if FLAGS.dev_run:
-    mydict['maxiter_O'] = [2]
-    mydict['maxiter_K'] = [3]
-    mydict['popsize_O'] = [20]
-    mydict['popsize_K'] = [15]
+    mydict['m'] = [3]
+    mydict['maxiter_O'] = [1]
+    mydict['maxiter_K'] = [1]
+    mydict['popsize_O'] = [1]
+    mydict['popsize_K'] = [2]
     mydict['polish_K'] = [0]
     mydict['polish_O'] = [0]
 
@@ -81,8 +82,10 @@ def run_main(sett, dothreading):
 if __name__ == "__main__":
     print('{} total experiments available'.format(len(EXPERIMENT_LIST)))
     if FLAGS.run_all:
+        print('Running all experiments')
         df = pd.DataFrame()
         for sett in EXPERIMENT_LIST:
+            print('Running id = ', sett['id_target'], 'of', len(EXPERIMENT_LIST))
             try:
                 run_main(sett, dothreading=FLAGS.dothreading)
                 status = "FINISHED"
@@ -97,4 +100,5 @@ if __name__ == "__main__":
             print(df.sort_values(by="status"))
     else:
         settings = EXPERIMENT_LIST[FLAGS.id]
+        print('Running id = ', settings['id_target'])
         run_main(settings, dothreading=FLAGS.dothreading)
