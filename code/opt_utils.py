@@ -268,7 +268,7 @@ class AnalyzePymoo:
         dump_data(dump, os.path.join(writedir, 'opt_info.pkl'))
 
 
-    def make_plots(self, plotdir):
+    def make_plots(self, plotdir, percentile_list=[0, 1, 10, 50, 100]):
         os.makedirs(plotdir, exist_ok=True)
 
         # write monitoring data to file
@@ -280,7 +280,7 @@ class AnalyzePymoo:
         self.compare_params(plotdir)
 
         # plot robustness in parameter space
-        self.plot_robustness(plotdir)
+        self.plot_robustness(plotdir, percentile_list)
 
         # plot per-optimization:
         for n in range(len(self.opt_list)):
@@ -289,7 +289,7 @@ class AnalyzePymoo:
             self.plot_params(self.X[n], pdir)
 
 
-    def plot_robustness(self, plotdir, percentile_list=[0, 1, 10, 50, 100]):
+    def plot_robustness(self, plotdir, percentile_list):
 
         #$ plot CDF
         fig, ax = plt.subplots(nrows=1, ncols=1, figsize = [8,8])

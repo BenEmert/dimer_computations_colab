@@ -223,6 +223,13 @@ class TuneK:
         c0_sorted[c0_sorted < self.acc_lb] = self.acc_lb
         c0_sorted[c0_sorted > self.acc_ub] = self.acc_ub
 
+        # print raw params
+        print('Raw best grid params are...')
+        print('K:', K_sorted[0])
+        print('c0:', c0_sorted[0])
+        print('MSE = ', mse_sorted[0])
+        print('Re-check MSE:', self.simple_loss(self.g1(c0_sorted[0], K_sorted[0])))
+
         # re-order each param entry so that it obeys the descending constraint (for uniqueness)
         n_input = 1
         for j in range(K_sorted.shape[0]):
@@ -238,7 +245,7 @@ class TuneK:
         info_dict = self.make_opt_output_list(opt_list, K)[0]
         info_dict['K'] = K
 
-        print('Printing best grid element...')
+        print('Printing best grid element (after re-ordering)...')
         print('K:', K_sorted[0])
         print('c0:', c0_sorted[0])
         print('MSE = ', mse_sorted[0])
@@ -393,7 +400,8 @@ class TuneK:
             print('\n## Now running/plotting final optimal values... ##')
             self.loss_k(k_opt, final_run=True, plot_surface=plot_surface, nxsurface=self.nxsurface, extra_nm=extra_nm)
             analyzeOpt = AnalyzePymoo([res], self.Knames, truth=self.truth['K'])
-            analyzeOpt.make_plots(os.path.join(self.output_dir, extra_nm))
+            percentile_list = [0] #[0, 1, 10, 50, 100]
+            analyzeOpt.make_plots(os.path.join(self.output_dir, extra_nm), percentile_list=percentile_list)
 
             ## Compare to grid_K
             # dimers = self.g1(self.c0)
@@ -408,7 +416,6 @@ class TuneK:
             print(info_dict)
             self.plot_many_fits(output_dir, [info_dict])
 
-            percentile_list = [0] #[0, 1, 10, 50, 100]
             n_examples = 1
             for j in range(len(percentile_list)-1):
                 k_examples = analyzeOpt.sample_X_from_grid(p_low=percentile_list[j], p_high=percentile_list[j+1], n=n_examples)
@@ -426,7 +433,7 @@ class TuneK:
         # plot multi-start summary
         new_plot_dirname = os.path.join(self.output_dir,'Final_Summary')
         ap = AnalyzePymoo(res_list, self.Knames, truth=self.truth['K'])
-        ap.make_plots(new_plot_dirname)
+        ap.make_plots(new_plot_dirname, percentile_list=percentile_list)
         for j in range(len(percentile_list)-1):
             k_examples = ap.sample_X_from_grid(p_low=percentile_list[j], p_high=percentile_list[j+1], n=n_examples)
             param_list = []

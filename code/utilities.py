@@ -323,7 +323,7 @@ def sort_K_ascending(K, m, n_input=1):
     else:
         reshape = False
 
-    K[np.tril_indices(m)] = K[np.triu_indices(m)]
+    K[np.tril_indices(m,-1)] =  K[np.triu_indices(m,1)]
 
     # get the non-input reordered indices
     new_inds = np.flip(np.argsort(np.diag(K)[n_input:])) + n_input
