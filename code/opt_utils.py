@@ -158,6 +158,47 @@ def plot_avg_err(output_dir, avg_err, jacob_avg_err, m_list, nm='mse', caption='
     fig.savefig(os.path.join(output_dir,'avg_{}.pdf'.format(nm)), format='pdf')
     plt.close()
 
+def plot_target_err(output_dir, opt_err, jacob_err, m_list, nm='mse', caption='MSE per target'):
+    N_targets = jacob_err.shape[0]
+    os.makedirs(output_dir, exist_ok=True)
+    for i in range(len(m_list)):
+        m = m_list[i]
+
+        fig, ax = plt.subplots()
+        inds = np.argsort(jacob_err[:,i])
+        bp()
+        inds = (opt_err[:,0,i] - jacob_err[:,i] > 1e-2)
+        N_targets = np.sum(inds)
+        # announce id's for which Optimization was WORSE than its grid-based initialization
+        print('Target IDs for which optimization was WORSE than its grid-based initialization by more than 1e-2...', np.where(opt_err[:,0,i] - jacob_err[:,i] > 1e-2))
+
+        markerline1, stemlines1, baseline1 = ax.stem(np.arange(N_targets), jacob_err[inds,i], markerfmt='D', label="Grid")
+        baseline1.set_linewidth(0)
+        stemlines1.set_linewidth(0.2)
+        markerline1.set_markerfacecolor('none')
+
+        ax.scatter(np.arange(N_targets), opt_err[inds,0,i], marker='D', color='orange', label="Optimization")
+
+        ax.set_ylabel(caption)
+        ax.set_yscale('log')
+        ax.set_title(caption + ' m = ' + str(m))
+        ax.legend()
+        plt.subplots_adjust(left=None, bottom=None, right=None, top=None, wspace=0.4, hspace=0.4)
+        fig.savefig(os.path.join(output_dir,'stem_{}_{}.pdf'.format(nm,m)), format='pdf')
+        plt.close()
+
+        # plot ECDF
+        fig, ax = plt.subplots()
+        sns.ecdfplot(jacob_err[:,i], label='Grid (N={})'.format(jacob_err.shape[0]))
+        sns.ecdfplot(opt_err[:,0,i], label='Optimization (N={})'.format(np.sum(~np.isnan(opt_err[:,0,i]))))
+        ax.legend()
+        ax.set_xscale('log')
+        plt.subplots_adjust(left=None, bottom=None, right=None, top=None, wspace=0.4, hspace=0.4)
+        fig.savefig(os.path.join(output_dir,'ecdf_{}_{}.pdf'.format(nm,m)), format='pdf')
+        plt.close()
+
+
+
 class AnalyzePymoo:
     def __init__(self, opt_list,
                     xnames = None,
@@ -279,6 +320,7 @@ class AnalyzePymoo:
                 fig = sns.pairplot(data=df, corner=True, hue='run')
                 fig.set(xlim=self.bounds, ylim=self.bounds)
                 fig.savefig(os.path.join(plotdir, 'X_bivariate_thresh{}.pdf'.format(percentile_list[j])), format='pdf')
+                plt.close()
             except:
                 print('UNABLE TO PRINT BIVARIATE PLOT. WHAT IS WRONG? IDK.')
 
