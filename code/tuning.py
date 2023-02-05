@@ -162,7 +162,7 @@ class TuneK:
             self.f_targets = np.log10(self.f_targets)
 
         self.n_targets = self.f_targets.shape[0]
-        self.f_targets_max_sq = 1 #np.max(self.f_targets, axis=1)**2
+        self.f_targets_max_sq = [1] #np.max(self.f_targets, axis=1)**2
         self.f_targets_max_sq[self.f_targets_max_sq==0] = 1 #avoid divide by zero
 
         self.plot_targets(output_dir=self.output_dir)
