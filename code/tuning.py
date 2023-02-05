@@ -265,7 +265,7 @@ class TuneK:
         '''Overwrite existing targets'''
         self.f_targets = interp_target(self.n_input_samples, F)
         self.n_targets = self.f_targets.shape[0]
-        self.f_targets_max_sq = np.max(self.f_targets, axis=1)**2
+        self.f_targets_max_sq = 1 #np.max(self.f_targets, axis=1)**2
 
     def mse(self, f_true, f_pred):
         '''Mean Squared Error'''
