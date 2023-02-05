@@ -176,8 +176,9 @@ class TuneK:
             print('Currently in ', os.getcwd())
 
     def get_brute_K(self, grid_dir):
-
         curve_path = os.path.join(grid_dir, '{}m_S_all.npy'.format(self.m))
+
+        # I think the first m belong are monomers?
         jacob = np.load(curve_path, allow_pickle=True) #.reshape(30,-1) # 30 x dimers x N
 
         ### NOTE: the first entries belong to K, then the last few entries belong to accessory a.
@@ -204,7 +205,7 @@ class TuneK:
         # for i_dimer in range(10): #range(jacob.shape[1]):
         mse_vec = np.zeros(jacob.shape[2])
         for i_param in range(jacob.shape[2]):
-            # guessing that the first N belong to the
+            # guessing that the first N belong to the monomers
             dimers = np.log10(jacob[:,-self.n_dimers:,i_param])
             theta_star, mse_total, mse_list = self.simple_loss(dimers)
             mse_vec[i_param] = mse_total
