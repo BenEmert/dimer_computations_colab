@@ -31,19 +31,19 @@ mydict = {
     "scale_type": ["per-dimer"], #"per-target"],
     "plot_inner_opt": [0],
     "maxiter_O": [10],
-    "popsize_O": [50],
+    "popsize_O": [25],
     "polish_O": [0],
-    "maxiter_K": [1, 10, 25],
-    "popsize_K": [100],
-    "polish_K": [1],
+    "maxiter_K": [10],
+    "popsize_K": [25],
+    "polish_K": [0],
     "nstarts_K": [1],
 }
 
 if FLAGS.dev_run:
-    mydict['m'] = [3]
-    mydict['maxiter_O'] = [1]
-    mydict['maxiter_K'] = [1]
-    mydict['popsize_O'] = [1]
+    mydict['m'] = [5]
+    mydict['maxiter_O'] = [2]
+    mydict['maxiter_K'] = [2]
+    mydict['popsize_O'] = [2]
     mydict['popsize_K'] = [2]
     mydict['polish_K'] = [0]
     mydict['polish_O'] = [0]
