@@ -358,7 +358,7 @@ class TuneK:
 
             try:
                 K_unique = pd.DataFrame(self.K_sorted).drop_duplicates().to_numpy()
-                if K_unique.shape[0] <= popsize:
+                if K_unique.shape[0] >= popsize:
                     X = K_unique[:popsize]
                 else:
                     X = self.K_sorted[:popsize]
