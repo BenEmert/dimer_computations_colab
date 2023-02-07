@@ -357,8 +357,12 @@ class TuneK:
                 n_max_gen=maxiter)
 
             try:
-                X = self.K_sorted[:popsize]
-                F = self.mse_sorted[:popsize]
+                K_unique = pd.DataFrame(self.K_sorted).drop_duplicates().to_numpy()
+                if K_unique.shape[0] <= popsize:
+                    X = K_unique[:popsize]
+                else:
+                    X = self.K_sorted[:popsize]
+                # F = self.mse_sorted[:popsize]
                 pop = Population.new("X", X) #, "F", F)
                 algorithm = GA(pop_size=popsize, sampling=pop)
             except:
