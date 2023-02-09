@@ -114,4 +114,5 @@ if __name__ == "__main__":
         m_list = [3,5,10,20,30,100,200,500,1000]
         FLAGS.n_monomers = m_list[FLAGS.job_id]
 
+    print('### Running for m = {}'.format(FLAGS.n_monomers))
     main(**FLAGS.__dict__)
