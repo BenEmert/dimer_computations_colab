@@ -20,6 +20,7 @@ from pdb import set_trace as bp
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--base_dir', default='.', type=str) # base directory for output
+parser.add_argument("--job_id", default=-1, type=int)
 parser.add_argument("--n_input_dim", default=2, type=int)
 parser.add_argument("--n_input_samples", default=1000, type=int)
 parser.add_argument("--n_tanh_features", default=100, type=int)
@@ -48,7 +49,7 @@ def make_plots(x, y, savepath, y_pred=None, features=None):
         plt.close()
 
 ## basic parameters
-def main(n_input_dim=2, n_input_samples=1000, n_tanh_features=1000, n_monomers=10, base_dir = '.'):
+def main(n_input_dim=2, n_input_samples=1000, n_tanh_features=1000, n_monomers=10, base_dir = '.', **kwargs):
 
     output_dir = os.path.join(base_dir, './inputDim-{}_samplesX-{}_m-{}_tanhN-{}'.format(n_input_dim, n_input_samples, n_monomers, n_tanh_features))
     os.makedirs(output_dir, exist_ok=True)
@@ -109,4 +110,8 @@ def main(n_input_dim=2, n_input_samples=1000, n_tanh_features=1000, n_monomers=1
 
 
 if __name__ == "__main__":
+    if FLAGS.job_id >= 0:
+        m_list = [3,5,10,20,30,100,200,500,1000]
+        FLAGS.n_monomers = m_list[FLAGS.job_id]
+
     main(**FLAGS.__dict__)
