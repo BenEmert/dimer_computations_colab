@@ -102,7 +102,7 @@ def plot_targets(output_dir, inputs, targets, fits=[], n_plots=4, input_bounds=[
 def plot_targets2(output_dir, inputs, targets, fits, jacob_fits, m_list, n_plots=4, input_bounds=[1e-3,1e3], output_bounds=[1e-3,1e3], label_fits=False, fit_label='fits', nm='mse'):
 
     '''fits: (n_targets, n_inputs, n_runs, n_m_vals)'''
-    linestyles = ['dotted', 'dashed', 'dashdot', 'loosely dotted', 'densely dotted', 'dashdotted']
+    linestyles = ['dotted', 'dashed', 'dashdot', 'dotted']
     nT, nI, nR, nM = fits.shape
     os.makedirs(output_dir, exist_ok=True)
     n_targets = len(targets)
@@ -163,12 +163,20 @@ def plot_target_err(output_dir, opt_err, jacob_err, m_list, nm='mse', caption='M
     os.makedirs(output_dir, exist_ok=True)
     for i in range(len(m_list)):
         m = m_list[i]
+        print('Plotting target error for m=', m)
+
+        print('Optimization results unavailable for IDs:',np.where(np.isnan(opt_err[:,0,i])))
 
         fig, ax = plt.subplots()
         inds = np.argsort(jacob_err[:,i])
-        bp()
-        inds = (opt_err[:,0,i] - jacob_err[:,i] > 1e-2)
-        N_targets = np.sum(inds)
+        opt_diff = opt_err[:,0,i] - jacob_err[:,i]
+        i_bad = np.nanargmax(opt_diff)
+        print('Worst offender is id', i_bad, 'with difference', opt_diff[i_bad])
+        print('Opt MSE:', opt_err[i_bad,0,i])
+        print('Grid MSE:', jacob_err[i_bad,i])
+
+        # inds = (opt_err[:,0,i] - jacob_err[:,i] > 1e-2)
+        # N_targets = np.sum(inds)
         # announce id's for which Optimization was WORSE than its grid-based initialization
         print('Target IDs for which optimization was WORSE than its grid-based initialization by more than 1e-2...', np.where(opt_err[:,0,i] - jacob_err[:,i] > 1e-2))
 
