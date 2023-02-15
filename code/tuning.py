@@ -364,10 +364,12 @@ class TuneK:
                     X = self.K_sorted[:popsize]
                 # F = self.mse_sorted[:popsize]
                 pop = Population.new("X", X) #, "F", F)
-                algorithm = GA(pop_size=popsize, sampling=pop)
+                # algorithm = GA(pop_size=popsize, sampling=pop)
+                algorithm = DE(pop_size=popsize, sampling=pop, CR=0.9)
             except:
                 print('UNABLE to initialize at brute force results')
-                algorithm = GA(pop_size=popsize)
+                # algorithm = GA(pop_size=popsize)
+                algorithm = DE(pop_size=popsize, CR=0.9)
             # algorithm = DE(CR=0.9, pop_size=popsize, sampling=pop)
             # algorithm = NelderMead(x0=X[0])
 
@@ -421,7 +423,7 @@ class TuneK:
             print(info_dict)
             self.plot_many_fits(output_dir, [info_dict])
 
-            n_examples = 1
+            n_examples = 10
             for j in range(len(percentile_list)-1):
                 k_examples = analyzeOpt.sample_X_from_grid(p_low=percentile_list[j], p_high=percentile_list[j+1], n=n_examples)
                 param_list = []
