@@ -81,6 +81,9 @@ class TuneK:
                     nxsurface=10,
                     id_target=None,
                     grid_dir=None,
+                    randomizeK=False,
+                    id_K=None,
+                    inner_opt_seed=99,
                     **kwargs):
         """
         Run simulations for dimer networks of size m and input titration size t
@@ -120,6 +123,10 @@ class TuneK:
         self.input_ub = input_ub
         self.acc_lb = acc_lb
         self.acc_ub = acc_ub
+
+        self.randomizeK = randomizeK
+        self.id_K = id_K
+        self.inner_opt_seed = inner_opt_seed
 
         self.param_lb = param_lb
         self.param_ub = param_ub
@@ -356,20 +363,28 @@ class TuneK:
                 n_last=20,
                 n_max_gen=maxiter)
 
-            try:
-                K_unique = pd.DataFrame(self.K_sorted).drop_duplicates().to_numpy()
-                if K_unique.shape[0] >= popsize:
-                    X = K_unique[:popsize]
-                else:
-                    X = self.K_sorted[:popsize]
-                # F = self.mse_sorted[:popsize]
-                pop = Population.new("X", X) #, "F", F)
-                # algorithm = GA(pop_size=popsize, sampling=pop)
-                algorithm = DE(pop_size=popsize, sampling=pop, CR=0.9)
-            except:
-                print('UNABLE to initialize at brute force results')
-                # algorithm = GA(pop_size=popsize)
-                algorithm = DE(pop_size=popsize, CR=0.9)
+            if self.randomizeK:
+                np.random.seed(self.id_K)
+                K0 = np.random.uniform(low=self.param_lb, high=self.param_ub, size=(self.num_rxns))
+                K0 = sort_K_ascending(K0, self.m, n_input=1)[0]
+                print('idK = ', self.id_K, 'yields K:', K0)
+                pop = Population.new("X", K0.reshape(1,-1)) #, "F", F)
+                algorithm = DE(pop_size=popsize, sampling=pop)
+            else:
+                try:
+                    K_unique = pd.DataFrame(self.K_sorted).drop_duplicates().to_numpy()
+                    if K_unique.shape[0] >= popsize:
+                        X = K_unique[:popsize]
+                    else:
+                        X = self.K_sorted[:popsize]
+                    # F = self.mse_sorted[:popsize]
+                    pop = Population.new("X", X) #, "F", F)
+                    # algorithm = GA(pop_size=popsize, sampling=pop)
+                    algorithm = DE(pop_size=popsize, sampling=pop, CR=0.9)
+                except:
+                    print('UNABLE to initialize at brute force results')
+                    # algorithm = GA(pop_size=popsize)
+                    algorithm = DE(pop_size=popsize, CR=0.9)
             # algorithm = DE(CR=0.9, pop_size=popsize, sampling=pop)
             # algorithm = NelderMead(x0=X[0])
 
@@ -412,9 +427,12 @@ class TuneK:
 
             ## Compare to grid_K
             # dimers = self.g1(self.c0)
-            opt_diff = k_opt_loss - self.mse_sorted[0]
-            if opt_diff > 0:
-                print('UH OH----Optimization performed WORSE than its grid-based initialization by amount', opt_diff)
+            try:
+                opt_diff = k_opt_loss - self.mse_sorted[0]
+                if opt_diff > 0:
+                    print('UH OH----Optimization performed WORSE than its grid-based initialization by amount', opt_diff)
+            except:
+                pass
 
             # make some plots with the optimal K
             output_dir = os.path.join(self.output_dir, extra_nm)
@@ -929,7 +947,7 @@ class TuneK:
         else:
             pass
 
-    def f_min_outer(self, problem, truth, plot_dirname, verbose=True, make_plots=True, seed=99):
+    def f_min_outer(self, problem, truth, plot_dirname, verbose=True, make_plots=True, seed=None):
         opt_list = minimize_wrapper(
             problem,
             self.algorithm,
@@ -945,6 +963,7 @@ class TuneK:
         return opt_list
 
     def outer_opt(self, K, verbose=True, make_plots=True):
+        seed = self.inner_opt_seed
         self.set_inner_problems(K)
         if self.acc_opt=='inner':
             if self.w_opt=='inner' and not(self.one_scale):
@@ -955,16 +974,16 @@ class TuneK:
                     except:
                         truth = self.truth['a0']
                     problem = self.inner_problem_list[j]
-                    opt_list_j = self.f_min_outer(problem, truth=truth, plot_dirname=os.path.join(self.output_dir,'inner_opt_j{}'.format(j)), verbose=verbose, make_plots=make_plots)
+                    opt_list_j = self.f_min_outer(problem, truth=truth, plot_dirname=os.path.join(self.output_dir,'inner_opt_j{}'.format(j)), verbose=verbose, make_plots=make_plots, seed=seed)
                     opt_list.append(opt_list_j)
                 output_list = self.make_opt_output_list(opt_list, K)
             elif self.w_opt=='outer' or self.one_scale:
                 problem = self.inner_problem_list[0]
-                opt_list = self.f_min_outer(problem, truth=self.truth['a0'], plot_dirname=os.path.join(self.output_dir,'inner_opt'), verbose=verbose, make_plots=make_plots)
+                opt_list = self.f_min_outer(problem, truth=self.truth['a0'], plot_dirname=os.path.join(self.output_dir,'inner_opt'), verbose=verbose, make_plots=make_plots, seed=seed)
                 output_list = self.make_opt_output_list(opt_list, K)
         elif self.acc_opt=='outer' and self.w_opt=='inner':
             problem = self.inner_problem_list[0]
-            opt_list = self.f_min_outer(problem, truth=self.truth['a0'], plot_dirname=os.path.join(self.output_dir,'inner_opt'), verbose=verbose, make_plots=make_plots)
+            opt_list = self.f_min_outer(problem, truth=self.truth['a0'], plot_dirname=os.path.join(self.output_dir,'inner_opt'), verbose=verbose, make_plots=make_plots, seed=seed)
             output_list = self.make_opt_output_list(opt_list, K)
         else:
             pass

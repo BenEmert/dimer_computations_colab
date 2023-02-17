@@ -99,10 +99,19 @@ def plot_targets(output_dir, inputs, targets, fits=[], n_plots=4, input_bounds=[
         fig.savefig(os.path.join(output_dir,'target_plot{}.pdf'.format(n)), format='pdf')
         plt.close()
 
-def plot_targets2(output_dir, inputs, targets, fits, jacob_fits, m_list, n_plots=4, input_bounds=[1e-3,1e3], output_bounds=[1e-3,1e3], label_fits=False, fit_label='fits', nm='mse'):
+def plot_targets2(output_dir, inputs, targets, fits, jacob_fits, m_list, n_plots=4, input_bounds=[1e-3,1e3], output_bounds=[1e-3,1e3], label_fits=False, fit_label='fits', nm='mse', id_list=None):
 
     '''fits: (n_targets, n_inputs, n_runs, n_m_vals)'''
     linestyles = ['dotted', 'dashed', 'dashdot', 'dotted']
+
+    if id_list is None:
+        id_list = np.arange(fits.shape[0])
+    else:
+        fits = fits[id_list]
+        targets = targets[id_list]
+        jacob_fits = jacob_fits[id_list]
+
+
     nT, nI, nR, nM = fits.shape
     os.makedirs(output_dir, exist_ok=True)
     n_targets = len(targets)
@@ -138,7 +147,7 @@ def plot_targets2(output_dir, inputs, targets, fits, jacob_fits, m_list, n_plots
                     axs[i,j].set(xlim=input_bounds, ylim=output_bounds, xscale='log', yscale='log')
                     if i==(nrows-1) and j==(ncols-1):
                         axs[i,j].legend()
-                    axs[i,j].set_title('Target {}'.format(cc))
+                    axs[i,j].set_title('Target {}'.format(id_list[cc]))
                     axs[-1,j].set_xlabel('[Input Monomer]')
 
         fig.savefig(os.path.join(output_dir,'target_{}_plot{}.pdf'.format(nm,n)), format='pdf')
@@ -279,22 +288,25 @@ class AnalyzePymoo:
     def make_plots(self, plotdir, percentile_list=[0, 1, 10, 50, 100]):
         os.makedirs(plotdir, exist_ok=True)
 
-        # write monitoring data to file
-        self.write_info(plotdir)
+        try:
+            # write monitoring data to file
+            self.write_info(plotdir)
 
-        # compare across optimizations
-        self.plot_loss(plotdir)
+            # compare across optimizations
+            self.plot_loss(plotdir)
 
-        self.compare_params(plotdir)
+            self.compare_params(plotdir)
 
-        # plot robustness in parameter space
-        self.plot_robustness(plotdir, percentile_list)
+            # plot robustness in parameter space
+            self.plot_robustness(plotdir, percentile_list)
 
-        # plot per-optimization:
-        for n in range(len(self.opt_list)):
-            pdir = os.path.join(plotdir, 'run{}'.format(n))
-            os.makedirs(pdir, exist_ok=True)
-            self.plot_params(self.X[n], pdir)
+            # plot per-optimization:
+            for n in range(len(self.opt_list)):
+                pdir = os.path.join(plotdir, 'run{}'.format(n))
+                os.makedirs(pdir, exist_ok=True)
+                self.plot_params(self.X[n], pdir)
+        except:
+            print('Failed to make plots')
 
 
     def plot_robustness(self, plotdir, percentile_list):
