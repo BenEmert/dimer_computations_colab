@@ -84,6 +84,7 @@ class TuneK:
                     randomizeK=False,
                     id_K=None,
                     inner_opt_seed=99,
+                    abort_early=False,
                     **kwargs):
         """
         Run simulations for dimer networks of size m and input titration size t
@@ -124,6 +125,7 @@ class TuneK:
         self.acc_lb = acc_lb
         self.acc_ub = acc_ub
 
+        self.abort_early = abort_early # use to run self.outer_opt fewer times for randomK experiments that don't need final plots.
         self.randomizeK = randomizeK
         self.id_K = id_K
         self.inner_opt_seed = inner_opt_seed
@@ -433,6 +435,9 @@ class TuneK:
                     print('UH OH----Optimization performed WORSE than its grid-based initialization by amount', opt_diff)
             except:
                 pass
+
+            if self.abort_early:
+                return res
 
             # make some plots with the optimal K
             output_dir = os.path.join(self.output_dir, extra_nm)

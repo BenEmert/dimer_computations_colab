@@ -38,7 +38,8 @@ mydict = {
     "polish_K": [0],
     "nstarts_K": [1],
     "randomizeK": [True],
-    "id_K": [i for i in range(100)],
+    "abort_early": [True],
+    "id_K": [i for i in range(10)],
     "inner_opt_seed": [None]
 }
 
