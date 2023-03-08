@@ -47,5 +47,5 @@ for m in [3, 4, 5, 10]:
             if status!=0:
                 print('Job submission FAILED:', proc.stdout, cmd)
                 print('Will try again in {} hrs'.format(sleep_secs/60/60))
-            time.sleep(sleep_secs)
+                time.sleep(sleep_secs)
         print('Job submitted:', ' '.join(cmd))
