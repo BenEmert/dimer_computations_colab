@@ -39,7 +39,7 @@ for m in [3, 4, 5, 10]:
             fh.writelines(sbatch_str.format(m=m, offset=offset, mem=mem_dict[m]))
 
         cmd = ['sbatch', job_file]
-        status = 0
+        status = 1
         while status!=0:
             proc = subprocess.run(cmd, capture_output=True, text=True)
             # check for successful run and print the error
