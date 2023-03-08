@@ -3,8 +3,7 @@ import subprocess
 
 job_directory = 'inference_HPC/randomK_jacobTargets_autogen'
 
-sbatch_str = """
-#!/bin/bash
+sbatch_str = """#!/bin/bash
 
 #Submit this script with: sbatch thefilename
 
