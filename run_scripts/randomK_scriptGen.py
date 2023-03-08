@@ -1,4 +1,5 @@
 import os, sys
+import numpy as np
 import subprocess
 
 job_directory = 'inference_HPC/randomK_jacobTargets_autogen'
