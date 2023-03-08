@@ -2,6 +2,7 @@ import os, sys
 import subprocess
 
 job_directory = 'inference_HPC/randomK_jacobTargets_autogen'
+os.makedirs(job_directory, exist_ok=True)
 
 sbatch_str = """#!/bin/bash
 
