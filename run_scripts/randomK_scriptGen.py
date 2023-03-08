@@ -40,8 +40,7 @@ for m in [3, 4, 5, 10]:
         proc = subprocess.run(cmd, capture_output=True, text=True)
         # check for successful run and print the error
         status = proc.returncode
-        if report_status:
-            if status!=0:
-                print('Job submission FAILED:', proc.stdout, cmd)
-            else:
-                print('Job submitted:', ' '.join(cmd))
+        if status!=0:
+            print('Job submission FAILED:', proc.stdout, cmd)
+        else:
+            print('Job submitted:', ' '.join(cmd))
