@@ -28,7 +28,7 @@ max_jobs = num_Ks*max_targets
 
 n_per_batch_submission = 1000
 
-mem_dict = {'3': 5, '4': 10, '5': 20, '10': 20}
+mem_dict = {3: 5, 4: 10, 5: 20, 10: 20}
 for m in [3, 4, 5, 10]:
     for offset in np.arange(0, max_jobs, 1000):
         job_file = os.path.join(job_directory, "m{}_offset{}.job".format(m, offset))
