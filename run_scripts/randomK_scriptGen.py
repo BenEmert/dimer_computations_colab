@@ -1,4 +1,5 @@
 import os, sys
+import time
 import numpy as np
 import subprocess
 
@@ -22,6 +23,7 @@ id=$(( {offset} + $SLURM_ARRAY_TASK_ID))
 srun python bump_inference_tests_ainner_BoundedBumpsSeparate_main_randomK_jacobTargets.py --id $id --base_dir $base_dir --grid_dir badname --m {m}
 """
 
+sleep_secs = 60*60 # length of time (secs) to wait before trying to submit more jobs. Using 1 hour.
 max_targets = 691
 num_Ks = 10
 max_jobs = num_Ks*max_targets
@@ -37,10 +39,13 @@ for m in [3, 4, 5, 10]:
             fh.writelines(sbatch_str.format(m=m, offset=offset, mem=mem_dict[m]))
 
         cmd = ['sbatch', job_file]
-        proc = subprocess.run(cmd, capture_output=True, text=True)
-        # check for successful run and print the error
-        status = proc.returncode
-        if status!=0:
-            print('Job submission FAILED:', proc.stdout, cmd)
-        else:
-            print('Job submitted:', ' '.join(cmd))
+        status = 0
+        while status!=0:
+            proc = subprocess.run(cmd, capture_output=True, text=True)
+            # check for successful run and print the error
+            status = proc.returncode
+            if status!=0:
+                print('Job submission FAILED:', proc.stdout, cmd)
+                print('Will try again in {} hrs'.format(sleep_secs/60/60))
+            time.sleep(sleep_secs)
+        print('Job submitted:', ' '.join(cmd))
