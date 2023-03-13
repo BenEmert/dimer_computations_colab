@@ -71,6 +71,7 @@ class TuneK:
                     acc_ub = 3,
                     param_lb = -10, #-5,
                     param_ub = 7, # 7,
+                    id_dimer = None,
                     plot_inner_opt = True,
                     polish = False,
                     lsq_linear_method = 'bvls',
@@ -135,6 +136,8 @@ class TuneK:
         self.scale_bounds = scale_bounds
         self.opt_settings_outer = opt_settings_outer
         self.polish = polish
+
+        self.id_dimer = id_dimer #Set to an integer to choose which dimer output to consider. If None, find_best_beta will try them all.
 
         self.dimer_eps = dimer_eps # threshold below which to set to 0 for equilibrium levels.
         self.log_errors = log_errors # if True, computes errors w.r.t. target function as |log(f_target) - log(f_approx)|^2
@@ -737,7 +740,7 @@ class TuneK:
 
         return foo
 
-    def find_best_beta(self, x, y, scale=None, fit=True):
+    def find_best_beta(self, x, y, scale=None, fit=True, id_beta=None):
         n_betas = x.shape[1]
         if scale is None:
             scale = [None for j in range(n_betas)]
@@ -745,6 +748,16 @@ class TuneK:
             if scale[0] == 1:
                 scale = 1
             scale = [scale for j in range(n_betas)]
+
+        if id_beta is not None:
+            # assign beta vector
+            beta = np.zeros(n_betas)
+            foo_best = self.try_lsq_linear(x[:,id_beta].reshape(-1,1), y, scale=scale[id_beta], fit=fit)
+            beta[id_beta] = foo_best.x
+            foo_best.x = beta
+            return foo_best
+
+
         foo_list = [self.try_lsq_linear(x[:,j].reshape(-1,1), y, scale=scale[j], fit=fit) for j in range(n_betas)]
         j_best = 0
         mse_best = np.Inf
@@ -764,7 +777,7 @@ class TuneK:
         if self.single_beta:
             if self.no_rescaling:
                 scale = [1]
-            foo = self.find_best_beta(x, y, scale=scale, fit=not(one_scale))
+            foo = self.find_best_beta(x, y, scale=scale, fit=not(one_scale), id_beta=self.id_dimer)
         else:
             foo = self.try_lsq_linear(x, y)
         return foo
