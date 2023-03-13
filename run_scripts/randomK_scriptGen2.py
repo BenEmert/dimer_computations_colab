@@ -27,7 +27,7 @@ srun python bump_inference_tests_ainner_BoundedBumpsSeparate_main_randomK_jacobT
 num_Ks = 10
 n_per_batch_submission = 1000
 n_target_dict = {m: np.load('../data/voxel_averages/{}M_voxel_averages.npy'.format(m)).shape[0] for m in range(3,13)}
-n_dimers_dict = {m: m*(m+1)/2}
+n_dimers_dict = {m: m*(m+1)/2 for m in range(3,13)}
 mem_dict = {3: 5, 4: 10, 5: 20, 10: 20}
 for m in [3, 4, 5, 10]:
     max_jobs = num_Ks * n_target_dict[m] * n_dimers_dict[m]
