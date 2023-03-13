@@ -30,9 +30,9 @@ n_target_dict = {m: np.load('../data/voxel_averages/{}M_voxel_averages.npy'.form
 n_dimers_dict = {m: m*(m+1)/2 for m in range(3,13)}
 mem_dict = {3: 5, 4: 10, 5: 20, 10: 20}
 for m in [3, 4, 5, 10]:
-    max_jobs = num_Ks * n_target_dict[m] * n_dimers_dict[m]
+    max_jobs = int(num_Ks * n_target_dict[m] * n_dimers_dict[m])
     for offset in np.arange(0, max_jobs, 1000):
-        job_file = os.path.join(job_directory, "m{}_offset{}.job".format(m, offset))
+        job_file = os.path.join(job_directory, "m{}_offset{}.job".format(m, int(offset)))
 
         with open(job_file, 'w') as fh:
             fh.writelines(sbatch_str.format(m=m, offset=offset, mem=mem_dict[m]))
