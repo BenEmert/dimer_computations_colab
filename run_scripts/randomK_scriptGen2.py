@@ -10,7 +10,7 @@ sbatch_str = """#!/bin/bash
 
 #Submit this script with: sbatch thefilename
 
-#SBATCH --time=24:00:00   # walltime
+#SBATCH --time=4:00:00   # walltime
 #SBATCH --array=0-1000      # how many tasks in the array
 #SBATCH -J "randomK_jacobTargets_perID_m{m}_{offset}"   # job name
 #SBATCH --output=slurm/%x.%j.out
