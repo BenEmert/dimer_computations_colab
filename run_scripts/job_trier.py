@@ -3,9 +3,7 @@ import time
 import numpy as np
 import subprocess
 
-job_directory = 'inference_HPC/randomK_jacobTargets_autogen'
-os.makedirs(job_directory, exist_ok=True)
-
+log_file = 'my.log'
 
 sleep_secs = 30*60 # length of time (secs) to wait before trying to submit more jobs. Using 30min.
 
@@ -476,16 +474,25 @@ job_list = ['inference_HPC/randomK_jacobTargets_perDimer_autogen/m10_offset31300
 'inference_HPC/randomK_jacobTargets_perDimer_autogen/m3_offset1000.job',
 'inference_HPC/randomK_jacobTargets_perDimer_autogen/m3_offset0.job']
 
-
-for job_file in job_list:
-        cmd = ['sbatch', job_file]
-        status = 1
-        while status!=0:
-            proc = subprocess.run(cmd, capture_output=True, text=True)
-            # check for successful run and print the error
-            status = proc.returncode
-            if status!=0:
-                print('Job submission FAILED:', proc.stdout, cmd)
-                print('Will try again in {} mins'.format(sleep_secs/60))
-                time.sleep(sleep_secs)
-        print('Job submitted:', ' '.join(cmd))
+with open(log_file, 'w') as fh:
+    for job_file in job_list:
+            cmd = ['sbatch', job_file]
+            status = 1
+            while status!=0:
+                try:
+                    proc = subprocess.run(cmd, capture_output=True, text=True)
+                    # check for successful run and print the error
+                    status = proc.returncode
+                    out = proc.stdout
+                except:
+                    status = 1
+                    out = 'EXCEPTION'
+                if status!=0:
+                    my_str = 'Job submission FAILED: {} {}'.format(out, cmd)
+                    my_str += '\n Will try again in {} mins'.format(sleep_secs/60)
+                    print(my_str)
+                    fh.writelines(my_str)
+                    time.sleep(sleep_secs)
+            new_str = 'Job submitted: {}'.format(' '.join(cmd))
+            print(new_str)
+            fh.writelines(my_str)
