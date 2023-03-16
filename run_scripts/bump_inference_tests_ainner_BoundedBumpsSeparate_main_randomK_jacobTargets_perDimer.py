@@ -33,7 +33,7 @@ mydict = {
     "w_opt": ["inner"],
     "single_beta": [1],
     "scale_type": ["per-dimer"], #"per-target"],
-    "plot_inner_opt": [1],
+    "plot_inner_opt": [0],
     "maxiter_O": [20],
     "popsize_O": [100],
     "polish_O": [0],

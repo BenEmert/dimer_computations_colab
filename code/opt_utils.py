@@ -55,13 +55,14 @@ def minimize_wrapper(problem, algorithm, termination, seed=None, save_history=Tr
     if report_times:
         print('Minimization took {} seconds'.format(time() - t0))
 
+    t0 = time()
+    new_plot_dirname = make_new_dir(plot_dirname)
+    ap = AnalyzePymoo(opt_list, truth=truth)
+    ap.write_info(new_plot_dirname)
     if plot_analyses:
-        t0 = time()
-        new_plot_dirname = make_new_dir(plot_dirname)
-        ap = AnalyzePymoo(opt_list, truth=truth)
         ap.make_plots(new_plot_dirname)
-        if report_times:
-            print('Analysis took {} seconds'.format(time() - t0))
+    if report_times:
+        print('Analysis took {} seconds'.format(time() - t0))
 
     return opt_list
 
@@ -274,6 +275,7 @@ class AnalyzePymoo:
         self.Fmax = np.max(self.Fall_ordered)
 
     def write_info(self, writedir):
+        os.makedirs(writedir, exist_ok=True)
         dump = {'X': self.X,
                 'F': self.F,
                 # 'Xall': self.Xall,
