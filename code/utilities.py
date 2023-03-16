@@ -64,10 +64,10 @@ def load_data(fname='input.pkl'):
 def dump_data(out, fname='output.pkl', to_dict=True):
     with open(fname, 'wb') as f:
         pickle.dump(out, f)
-    try:
-        dict_to_file(out, os.path.splitext(fname)[0]+'.txt')
-    except:
-        pass
+    # try:
+    #     dict_to_file(out, os.path.splitext(fname)[0]+'.txt')
+    # except:
+    #     pass
     return
 
 def make_new_dir(x):
