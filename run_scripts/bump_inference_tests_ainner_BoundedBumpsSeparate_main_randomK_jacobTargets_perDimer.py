@@ -14,6 +14,7 @@ parser.add_argument("--dev_run", default=0, type=int)
 parser.add_argument("--run_all", default=0, type=int)
 parser.add_argument("--id", default=0, type=int)
 parser.add_argument("--dothreading", default=0, type=int)
+parser.add_argument("--make_plots", default=0, type=int)
 parser.add_argument("--m", default=3, type=int)
 FLAGS = parser.parse_args()
 
@@ -34,6 +35,7 @@ mydict = {
     "single_beta": [1],
     "scale_type": ["per-dimer"], #"per-target"],
     "plot_inner_opt": [0],
+    "make_plots": [0],
     "maxiter_O": [20],
     "popsize_O": [100],
     "polish_O": [0],
@@ -72,12 +74,13 @@ def namemaker(x):
     nm = os.path.join(dirname, fname)
     return nm
 
-def run_main(sett, dothreading):
+def run_main(sett, dothreading, make_plots):
     sett['base_dir'] = os.path.join(sett['base_dir'], namemaker(sett))
 
     K_names = ['maxiter_K', 'popsize_K', 'polish_K', 'nstarts_K']
     sett_K = {k.split('_')[0]: sett[k] for k in K_names}
     sett_K['dothreading'] = dothreading
+    sett_K['make_plots'] = make_plots
 
     tune_names = ['maxiter_O', 'popsize_O', 'polish_O']
     sett['opt_settings_outer'] = {k.split('_')[0]: sett[k] for k in tune_names}
@@ -96,7 +99,7 @@ if __name__ == "__main__":
             print('Running id = ', sett['id_target'], 'of', len(EXPERIMENT_LIST))
 
             try:
-                run_main(sett, dothreading=FLAGS.dothreading)
+                run_main(sett, dothreading=FLAGS.dothreading, make_plots=FLAGS.make_plots)
                 status = "FINISHED"
             except:
                 status = "FAILED"
@@ -111,4 +114,4 @@ if __name__ == "__main__":
         settings = EXPERIMENT_LIST[FLAGS.id]
 
         print('Running target id = ', settings['id_target'], 'with dimer id =', settings['id_dimer'])
-        run_main(settings, dothreading=FLAGS.dothreading)
+        run_main(settings, dothreading=FLAGS.dothreading, make_plots=FLAGS.make_plots)

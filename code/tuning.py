@@ -73,6 +73,7 @@ class TuneK:
                     param_ub = 7, # 7,
                     id_dimer = None,
                     plot_inner_opt = True,
+                    make_plots = True,
                     polish = False,
                     lsq_linear_method = 'bvls',
                     lsq_bounds = (0, np.Inf),
@@ -145,6 +146,7 @@ class TuneK:
 
         self.lsq_bounds = lsq_bounds #(0, np.Inf)
 
+        self.make_plots = make_plots
         self.plot_inner_opt = plot_inner_opt
         self.nxsurface = nxsurface # number of grid points per axis on inner optimization plots
 
@@ -182,7 +184,8 @@ class TuneK:
         self.f_targets_max_sq = [1] #np.max(self.f_targets, axis=1)**2
         self.f_targets_max_sq[self.f_targets_max_sq==0] = 1 #avoid divide by zero
 
-        self.plot_targets(output_dir=self.output_dir)
+        if self.make_plots:
+            self.plot_targets(output_dir=self.output_dir)
 
         self.set_opts()
         try:
@@ -336,7 +339,7 @@ class TuneK:
     def diff(self, x, ilow, ihigh):
         return x[ihigh] - x[ilow]
 
-    def optimize_binding(self, popsize=15, maxiter=10, seed=None, nstarts=1, polish=False, plot_surface=False, do_constraints=True, dothreading=False, **kwargs):
+    def optimize_binding(self, popsize=15, maxiter=10, seed=None, nstarts=1, polish=False, plot_surface=False, do_constraints=True, dothreading=False, make_plots=True, **kwargs):
         res_list = []
 
         for ns in range(nstarts):
@@ -432,8 +435,10 @@ class TuneK:
             print('\n## Now running/plotting final optimal values... ##')
             self.loss_k(k_opt, final_run=True, plot_surface=plot_surface, nxsurface=self.nxsurface, extra_nm=extra_nm)
             analyzeOpt = AnalyzePymoo([res], self.Knames, truth=self.truth['K'])
-            percentile_list = [0, 1, 10, 50, 100]
-            analyzeOpt.make_plots(os.path.join(self.output_dir, extra_nm), percentile_list=percentile_list)
+            percentile_list = [0,1] #[0, 1, 10, 50, 100]
+            analyzeOpt.write_info(os.path.join(self.output_dir, extra_nm))
+            if make_plots:
+                analyzeOpt.make_plots(os.path.join(self.output_dir, extra_nm), percentile_list=percentile_list)
 
             ## Compare to grid_K
             # dimers = self.g1(self.c0)
@@ -471,7 +476,9 @@ class TuneK:
         # plot multi-start summary
         new_plot_dirname = os.path.join(self.output_dir,'Final_Summary')
         ap = AnalyzePymoo(res_list, self.Knames, truth=self.truth['K'])
-        ap.make_plots(new_plot_dirname, percentile_list=percentile_list)
+        ap.write_info(new_plot_dirname)
+        if make_plots:
+            ap.make_plots(new_plot_dirname, percentile_list=percentile_list)
         for j in range(len(percentile_list)-1):
             k_examples = ap.sample_X_from_grid(p_low=percentile_list[j], p_high=percentile_list[j+1], n=n_examples)
             param_list = []
@@ -583,7 +590,8 @@ class TuneK:
     def one_loss_k(self, K, mse_best=None, mse_list_best=None, c0_acc_best=None, theta_best=None,
                     final_run=False, verbose=False, normalize_plot=False,
                     output_dir=None):
-        os.makedirs(output_dir, exist_ok=True)
+        if self.make_plots or final_run:
+            os.makedirs(output_dir, exist_ok=True)
 
         if verbose or final_run:
             print('log(K):', K)
@@ -593,9 +601,9 @@ class TuneK:
             print('theta:', theta_best)
 
         if final_run:
-
-            outdir = os.path.join(output_dir, 'optimization_results')
-            os.makedirs(outdir, exist_ok=True)
+            if self.make_plots:
+                outdir = os.path.join(output_dir, 'optimization_results')
+                os.makedirs(outdir, exist_ok=True)
             ncols = min(6, self.n_targets)
             N_subs = int(np.ceil(self.n_targets / ncols))
             j = -1
@@ -662,54 +670,56 @@ class TuneK:
                         axs[2,cc].set_yscale('log')
 
                 fig.suptitle('Mean overall MSE = {}'.format(round(np.mean(mse_list),3)))
-                fig.savefig(os.path.join(outdir, 'plot{}.pdf'.format(n)), format='pdf')
+                if self.make_plots:
+                    fig.savefig(os.path.join(outdir, 'plot{}.pdf'.format(n)), format='pdf')
                 plt.close()
 
             # plot output dimers
-            if self.acc_opt=='outer':
-                fig, axs = plt.subplots(nrows=1, ncols=1, figsize = [10,10])
-                output_dimers = self.g1(c0_acc, K)
-                axs.plot(output_dimers)
-                axs.set_title('Output Dimers')
-                axs.set_yscale('log')
-                fig.savefig(os.path.join(output_dir, 'output_dimers.pdf'), format='pdf')
+            if self.make_plots:
+                if self.acc_opt=='outer':
+                    fig, axs = plt.subplots(nrows=1, ncols=1, figsize = [10,10])
+                    output_dimers = self.g1(c0_acc, K)
+                    axs.plot(output_dimers)
+                    axs.set_title('Output Dimers')
+                    axs.set_yscale('log')
+                    fig.savefig(os.path.join(output_dir, 'output_dimers.pdf'), format='pdf')
+                    plt.close()
+
+                # plot accessory values
+                a_dict = {'Learnt': np.array(c0_acc_best).reshape(-1, self.m-1)}
+                if len(self.truth['a0']):
+                    a_dict['True'] = np.array(self.truth['a0']).reshape(-1, self.m-1)
+                fig, axs = plt.subplots(nrows=1, ncols=len(a_dict), figsize = [len(a_dict)*12,10], squeeze=False)
+                plt.subplots_adjust(left=None, bottom=None, right=None, top=None, wspace=0.6, hspace=0.6)
+                c = -1
+                for nm, val in a_dict.items():
+                    c += 1
+                    ax = axs[0,c]
+                    sns.heatmap(ax=ax, data=val, cmap="viridis", vmin=self.acc_lb, vmax=self.acc_ub)
+                    ax.set_xticklabels(np.arange(2,self.m+1))
+                    ax.set_ylabel('Target Function Index')
+                    ax.set_xlabel('Accessory Monomer Index')
+                    ax.set_title('{} Accessory Monomer Concentrations (log10)'.format(nm))
+                fig.savefig(os.path.join(output_dir, 'accessory_concentrations.pdf'), format='pdf')
                 plt.close()
 
-            # plot accessory values
-            a_dict = {'Learnt': np.array(c0_acc_best).reshape(-1, self.m-1)}
-            if len(self.truth['a0']):
-                a_dict['True'] = np.array(self.truth['a0']).reshape(-1, self.m-1)
-            fig, axs = plt.subplots(nrows=1, ncols=len(a_dict), figsize = [len(a_dict)*12,10], squeeze=False)
-            plt.subplots_adjust(left=None, bottom=None, right=None, top=None, wspace=0.6, hspace=0.6)
-            c = -1
-            for nm, val in a_dict.items():
-                c += 1
-                ax = axs[0,c]
-                sns.heatmap(ax=ax, data=val, cmap="viridis", vmin=self.acc_lb, vmax=self.acc_ub)
-                ax.set_xticklabels(np.arange(2,self.m+1))
-                ax.set_ylabel('Target Function Index')
-                ax.set_xlabel('Accessory Monomer Index')
-                ax.set_title('{} Accessory Monomer Concentrations (log10)'.format(nm))
-            fig.savefig(os.path.join(output_dir, 'accessory_concentrations.pdf'), format='pdf')
-            plt.close()
-
-            ## plot optimal K
-            mask = np.tril(np.ones(self.m),-1) # creating mask
-            K_dict = {'Learnt': make_K_matrix(K, self.m)}
-            if len(self.truth['K']):
-                K_dict['True'] = make_K_matrix(self.truth['K'], self.m)
-            fig, axs = plt.subplots(nrows=1, ncols=len(K_dict), figsize = [len(a_dict)*10,10], squeeze=False)
-            c = -1
-            for nm, val in K_dict.items():
-                c += 1
-                ax = axs[0,c]
-                # plotting a triangle correlation heatmap
-                sns.heatmap(ax=ax, data=val, cmap="viridis", mask=mask, vmin=self.param_lb[0], vmax=self.param_ub[0])
-                ax.set_xticklabels(np.arange(1,self.m+1))
-                ax.set_yticklabels(np.arange(1,self.m+1))
-                ax.set_title('{} Binding Affinity Matrix (log10)'.format(nm))
-            fig.savefig(os.path.join(output_dir, 'logK.pdf'), format='pdf')
-            plt.close()
+                ## plot optimal K
+                mask = np.tril(np.ones(self.m),-1) # creating mask
+                K_dict = {'Learnt': make_K_matrix(K, self.m)}
+                if len(self.truth['K']):
+                    K_dict['True'] = make_K_matrix(self.truth['K'], self.m)
+                fig, axs = plt.subplots(nrows=1, ncols=len(K_dict), figsize = [len(a_dict)*10,10], squeeze=False)
+                c = -1
+                for nm, val in K_dict.items():
+                    c += 1
+                    ax = axs[0,c]
+                    # plotting a triangle correlation heatmap
+                    sns.heatmap(ax=ax, data=val, cmap="viridis", mask=mask, vmin=self.param_lb[0], vmax=self.param_ub[0])
+                    ax.set_xticklabels(np.arange(1,self.m+1))
+                    ax.set_yticklabels(np.arange(1,self.m+1))
+                    ax.set_title('{} Binding Affinity Matrix (log10)'.format(nm))
+                fig.savefig(os.path.join(output_dir, 'logK.pdf'), format='pdf')
+                plt.close()
 
             # bp()
             # save results
