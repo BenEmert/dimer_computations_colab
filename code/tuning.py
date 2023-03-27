@@ -430,16 +430,6 @@ class TuneK:
             k_opt = res.X
             k_opt_loss = res.F
 
-            # make plots and check the solution
-            extra_nm = 'FinalK_{}'.format(ns)
-            print('\n## Now running/plotting final optimal values... ##')
-            self.loss_k(k_opt, final_run=True, plot_surface=plot_surface, nxsurface=self.nxsurface, extra_nm=extra_nm)
-            analyzeOpt = AnalyzePymoo([res], self.Knames, truth=self.truth['K'])
-            percentile_list = [0,1] #[0, 1, 10, 50, 100]
-            analyzeOpt.write_info(os.path.join(self.output_dir, extra_nm))
-            if make_plots:
-                analyzeOpt.make_plots(os.path.join(self.output_dir, extra_nm), percentile_list=percentile_list)
-
             ## Compare to grid_K
             # dimers = self.g1(self.c0)
             try:
@@ -448,6 +438,19 @@ class TuneK:
                     print('UH OH----Optimization performed WORSE than its grid-based initialization by amount', opt_diff)
             except:
                 pass
+
+            # make plots and check the solution
+            if nstarts==1:
+                extra_nm = ''
+            else:
+                extra_nm = 'FinalK_{}'.format(ns)
+            print('\n## Now running/plotting final optimal values... ##')
+            self.loss_k(k_opt, final_run=True, plot_surface=plot_surface, nxsurface=self.nxsurface, extra_nm=extra_nm)
+            analyzeOpt = AnalyzePymoo([res], self.Knames, truth=self.truth['K'])
+            percentile_list = [0,1] #[0, 1, 10, 50, 100]
+            analyzeOpt.write_info(os.path.join(self.output_dir, extra_nm))
+            if make_plots:
+                analyzeOpt.make_plots(os.path.join(self.output_dir, extra_nm), percentile_list=percentile_list)
 
             if self.abort_early:
                 return res
@@ -571,15 +574,24 @@ class TuneK:
 
     def loss_k(self, K, n_starts=1, final_run=False, verbose=False, normalize_plot=False, plot_surface=False, extra_nm='Running', nxsurface=100):
         self.n_starts = n_starts
-        output_list = self.outer_opt(K, verbose=verbose, make_plots=self.plot_inner_opt)
+        if extra_nm=='':
+            use_extra_nm = False
+        else:
+            use_extra_nm = True
+
+        output_list = self.outer_opt(K, verbose=verbose, make_plots=self.plot_inner_opt, use_extra_nm=use_extra_nm)
         c = -1
         for info_dict in output_list:
             c += 1
+            if len(output_list)==1:
+                dir_str = extra_nm
+            else:
+                dir_str = '{}/run{}'.format(extra_nm, c)
             mse_best = self.one_loss_k(K, **info_dict,
                             final_run=final_run,
                             verbose=verbose,
                             normalize_plot=normalize_plot,
-                            output_dir=os.path.join(self.output_dir,'{}/run{}'.format(extra_nm, c)))
+                            output_dir=os.path.join(self.output_dir, dir_str))
 
         if plot_surface:
             a0_list = [d['c0_acc_best'] for d in output_list]
@@ -980,7 +992,7 @@ class TuneK:
         else:
             pass
 
-    def f_min_outer(self, problem, truth, plot_dirname, verbose=True, make_plots=True, seed=None):
+    def f_min_outer(self, problem, truth, plot_dirname, verbose=True, make_plots=True, seed=None, make_new_dir=True):
         opt_list = minimize_wrapper(
             problem,
             self.algorithm,
@@ -992,10 +1004,11 @@ class TuneK:
             truth=truth,
             seed=seed,
             plot_analyses=make_plots,
+            makenewdir=make_new_dir,
             plot_dirname=plot_dirname)
         return opt_list
 
-    def outer_opt(self, K, verbose=True, make_plots=True):
+    def outer_opt(self, K, verbose=True, make_plots=True, use_extra_nm=True):
         seed = self.inner_opt_seed
         self.set_inner_problems(K)
         if self.acc_opt=='inner':
@@ -1012,11 +1025,19 @@ class TuneK:
                 output_list = self.make_opt_output_list(opt_list, K)
             elif self.w_opt=='outer' or self.one_scale:
                 problem = self.inner_problem_list[0]
-                opt_list = self.f_min_outer(problem, truth=self.truth['a0'], plot_dirname=os.path.join(self.output_dir,'inner_opt'), verbose=verbose, make_plots=make_plots, seed=seed)
+                if use_extra_nm:
+                    plot_dirname = os.path.join(self.output_dir,'inner_opt')
+                else:
+                    plot_dirname = self.output_dir
+                opt_list = self.f_min_outer(problem, truth=self.truth['a0'], plot_dirname=plot_dirname, verbose=verbose, make_plots=make_plots, seed=seed, make_new_dir=use_extra_nm)
                 output_list = self.make_opt_output_list(opt_list, K)
         elif self.acc_opt=='outer' and self.w_opt=='inner':
             problem = self.inner_problem_list[0]
-            opt_list = self.f_min_outer(problem, truth=self.truth['a0'], plot_dirname=os.path.join(self.output_dir,'inner_opt'), verbose=verbose, make_plots=make_plots, seed=seed)
+            if use_extra_nm:
+                plot_dirname = os.path.join(self.output_dir,'inner_opt')
+            else:
+                plot_dirname = self.output_dir
+            opt_list = self.f_min_outer(problem, truth=self.truth['a0'], plot_dirname=plot_dirname, verbose=verbose, make_plots=make_plots, seed=seed, make_new_dir=use_extra_nm)
             output_list = self.make_opt_output_list(opt_list, K)
         else:
             pass

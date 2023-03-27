@@ -28,6 +28,7 @@ def minimize_wrapper(problem, algorithm, termination, seed=None, save_history=Tr
                     plot_dirname='optplots',
                     polish=False,
                     report_times=False,
+                    makenewdir=True,
                     truth = []):
 
     t0 = time()
@@ -56,7 +57,10 @@ def minimize_wrapper(problem, algorithm, termination, seed=None, save_history=Tr
         print('Minimization took {} seconds'.format(time() - t0))
 
     t0 = time()
-    new_plot_dirname = make_new_dir(plot_dirname)
+    if makenewdir:
+        new_plot_dirname = make_new_dir(plot_dirname)
+    else:
+        new_plot_dirname = plot_dirname
     ap = AnalyzePymoo(opt_list, truth=truth)
     ap.write_info(new_plot_dirname)
     if plot_analyses:
