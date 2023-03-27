@@ -119,7 +119,7 @@ def run_cleanup(run_dir, info_file, experiment_key, master_output_file, danger_t
         pickle.dump(master, f_master)
 
     # delete run-specific
-    # shutil.rmtree(run_dir)
+    shutil.rmtree(run_dir)
 
     # delete safe to read file
     srf.close()
