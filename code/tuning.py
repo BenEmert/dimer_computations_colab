@@ -293,10 +293,11 @@ class TuneK:
         return np.mean( (f_true - f_pred)**2 )
 
     def make_output_dir(self):
-        t = time.localtime()
-        timestamp = time.strftime('%m%d%Y%H%M%S', t)
-        base_nm = self.make_experiment_name()
-        self.output_dir = os.path.join(self.base_dir, timestamp + '_' + base_nm)
+        # t = time.localtime()
+        # timestamp = time.strftime('%m%d%Y%H%M%S', t)
+        # base_nm = self.make_experiment_name()
+        # self.output_dir = os.path.join(self.base_dir, timestamp + '_' + base_nm)
+        self.output_dir = self.base_dir
         os.makedirs(self.output_dir, exist_ok=True)
 
     def make_experiment_name(self):
