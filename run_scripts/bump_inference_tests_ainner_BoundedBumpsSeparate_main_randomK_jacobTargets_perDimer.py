@@ -96,7 +96,7 @@ def run_main(sett, dothreading, make_plots):
 
     return sett
 
-def run_cleanup(info_file, experiment_key, master_output_file, danger_to_read):
+def run_cleanup(run_dir, info_file, experiment_key, master_output_file, danger_to_read):
 
     while os.path.exists(danger_to_read):
         time.sleep(10*np.random.rand())
@@ -118,7 +118,7 @@ def run_cleanup(info_file, experiment_key, master_output_file, danger_to_read):
         pickle.dump(master, f_master)
 
         # delete run-specific
-        shutil.rmtree(info_file)
+        shutil.rmtree(run_dir)
 
     # delete safe to read file
     shutil.rmtree(danger_to_read)
@@ -159,4 +159,4 @@ if __name__ == "__main__":
             danger_to_read = os.path.join(*os.path.split(sett['base_dir'])[:-1], 'master_results_is_being_modified.info')
             master_output_file = os.path.join(*os.path.split(sett['base_dir'])[:-1], 'master_results.csv')
 
-            run_cleanup(info_file, experiment_key, master_output_file, danger_to_read)
+            run_cleanup(run_dir, info_file, experiment_key, master_output_file, danger_to_read)
