@@ -121,7 +121,7 @@ def run_cleanup(run_dir, info_file, experiment_key, master_output_file, danger_t
         shutil.rmtree(run_dir)
 
     # delete safe to read file
-    shutil.rmtree(danger_to_read)
+    os.remove(danger_to_read)
 
     return
 
