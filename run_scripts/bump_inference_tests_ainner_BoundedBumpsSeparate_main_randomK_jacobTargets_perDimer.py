@@ -101,27 +101,28 @@ def run_cleanup(run_dir, info_file, experiment_key, master_output_file, danger_t
     while os.path.exists(danger_to_read):
         time.sleep(10*np.random.rand())
 
-    bp()
-    with open(danger_to_read, 'wb') as srf:
-        with open(master_output_file, 'ab+') as f_master:
-            try:
-                master = pickle.load(f_master)
-            except:
-                # only to initialize (first time)
-                master = {}
+    srf = open(danger_to_read, 'wb')
+    try:
+        with open(master_output_file, 'rb') as f_master:
+            master = pickle.load(f_master)
+    except:
+        # only to initialize (first time)
+        master = {}
 
-            # read in run-specific model_info.pkl, then write it to master
-            with open(info_file, 'rb') as f_run:
-                #write the run to master
-                master[experiment_key] = pickle.load(f_run)
+    # read in run-specific model_info.pkl, then write it to master
+    with open(info_file, 'rb') as f_run:
+        #write the run to master
+        master[experiment_key] = pickle.load(f_run)
 
-                # write master to file
-                pickle.dump(master, f_master)
+    # write master to file
+    with open(master_output_file, 'wb') as f_master:
+        pickle.dump(master, f_master)
 
-        # delete run-specific
-        # shutil.rmtree(run_dir)
+    # delete run-specific
+    # shutil.rmtree(run_dir)
 
     # delete safe to read file
+    srf.close()
     os.remove(danger_to_read)
 
     return
