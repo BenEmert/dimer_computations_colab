@@ -25,7 +25,7 @@ FLAGS = parser.parse_args()
 
 mydict = {
     "grid_dir": [FLAGS.grid_dir],
-    "base_dir": [FLAGS.base_dir],
+    "nominal_base_dir": [FLAGS.base_dir],
     "target_lib_file": [FLAGS.target_lib_file],
     "target_lib_name": ["MetaClusters"], # this option reads in targets from file
     "dimer_eps": [1e-16],
@@ -80,7 +80,7 @@ def namemaker(x):
     return nm
 
 def run_main(sett, dothreading, make_plots):
-    sett['base_dir'] = os.path.join(sett['base_dir'], namemaker(sett))
+    sett['base_dir'] = os.path.join(sett['nominal_base_dir'], namemaker(sett))
 
     K_names = ['maxiter_K', 'popsize_K', 'polish_K', 'nstarts_K']
     sett_K = {k.split('_')[0]: sett[k] for k in K_names}
