@@ -17,7 +17,7 @@ sbatch_str = """#!/bin/bash
 #SBATCH --error=slurm/%x.%j.err
 #SBATCH --mem-per-cpu={mem}G
 
-base_dir="/groups/astuart/mlevine/dimer_computations_colab/results/BoundedBumps_randomK_jacobTarget_perDimer_8.1.0"
+base_dir="/groups/astuart/mlevine/dimer_computations_colab/results/BoundedBumps_randomK_jacobTarget_perDimer_9.0.0"
 
 id=$(( {offset} + $SLURM_ARRAY_TASK_ID))
 srun python bump_inference_tests_ainner_BoundedBumpsSeparate_main_randomK_jacobTargets_perDimer.py --id $id --base_dir $base_dir --grid_dir badname --m {m}
