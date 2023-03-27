@@ -1,4 +1,6 @@
 import os, sys
+import shutil
+import time
 import argparse
 import pandas as pd
 sys.path.append('../code')
@@ -95,7 +97,7 @@ def run_main(sett, dothreading, make_plots):
 def run_cleanup(info_file, experiment_key, master_output_file, danger_to_read):
 
     while not os.path.exists(danger_to_read):
-        pause(10*np.random.rand())
+        time.sleep(10*np.random.rand())
 
     with open(danger_to_read, 'wb') as srf:
         f_master = open(master_output_file, 'ab')
@@ -114,10 +116,10 @@ def run_cleanup(info_file, experiment_key, master_output_file, danger_to_read):
         pickle.dump(master, f_master)
 
         # delete run-specific
-        os.rmdir(info_file)
+        shutil.rmtree(info_file)
 
     # delete safe to read file
-    os.rmdir(danger_to_read)
+    shutil.rmtree(danger_to_read)
 
     return
 
