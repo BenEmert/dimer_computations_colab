@@ -103,7 +103,7 @@ def run_cleanup(run_dir, info_file, experiment_key, master_output_file, danger_t
 
     bp()
     with open(danger_to_read, 'wb') as srf:
-        with open(master_output_file, 'ab') as f_master:
+        with open(master_output_file, 'ab+') as f_master:
             try:
                 master = pickle.load(f_master)
             except:
