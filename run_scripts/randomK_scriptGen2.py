@@ -10,7 +10,7 @@ sbatch_str = """#!/bin/bash
 
 #Submit this script with: sbatch thefilename
 
-#SBATCH --time=4:00:00   # walltime
+#SBATCH --time=2:00:00   # walltime
 #SBATCH --array=0-1000      # how many tasks in the array
 #SBATCH -J "randomK_jacobTargets_perID_m{m}_{offset}"   # job name
 #SBATCH --output=slurm/%x.%j.out
@@ -29,8 +29,9 @@ n_per_batch_submission = 1000
 n_target_dict = {m: np.load('../data/voxel_averages/{}M_voxel_averages.npy'.format(m)).shape[0] for m in range(3,13)}
 n_dimers_dict = {m: m*(m+1)/2 for m in range(3,13)}
 # mem_dict = {3: 5, 4: 10, 5: 20, 10: 20}
-mem_dict = {3: 2, 4: 2, 5: 2, 10: 2}
-for m in [3, 4, 5, 10]:
+m_list = [i for i in range(3,12+1)]
+mem_dict = {m: 2 for m in m_list} #always use 2GB RAM
+for m in m_list:
     max_jobs = num_Ks * n_target_dict[m] * n_dimers_dict[m]
     for offset in np.arange(0, max_jobs, 1000):
         offset = int(offset)
