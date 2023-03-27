@@ -55,7 +55,7 @@ mydict = {
 }
 
 if FLAGS.dev_run:
-    mydict['m'] = [3]
+    # mydict['m'] = [3]
     mydict['maxiter_O'] = [2]
     mydict['maxiter_K'] = [1]
     mydict['popsize_O'] = [2]
@@ -118,7 +118,7 @@ def run_cleanup(run_dir, info_file, experiment_key, master_output_file, danger_t
         pickle.dump(master, f_master)
 
         # delete run-specific
-        shutil.rmtree(run_dir)
+        # shutil.rmtree(run_dir)
 
     # delete safe to read file
     os.remove(danger_to_read)
