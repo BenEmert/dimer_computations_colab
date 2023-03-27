@@ -16,6 +16,7 @@ parser.add_argument("--id", default=0, type=int)
 parser.add_argument("--dothreading", default=0, type=int)
 parser.add_argument("--make_plots", default=0, type=int)
 parser.add_argument("--m", default=3, type=int)
+parser.add_argument("--n_random_Ks", default=10, type=int)
 FLAGS = parser.parse_args()
 
 mydict = {
@@ -45,7 +46,7 @@ mydict = {
     "nstarts_K": [1],
     "randomizeK": [True],
     "abort_early": [True],
-    "id_K": [i for i in range(10)],
+    # "id_K": [i for i in range(10)],
     "inner_opt_seed": [None]
 }
 
@@ -65,13 +66,13 @@ MAX_ITERS = 2e6
 
 def namemaker(x):
 
-    foo = [x[k] for k in ['n_switches', 'n_switch_points', 'acc_opt', 'w_opt', 'single_beta', 'scale_type', 'm', 'plot_inner_opt', 'id_target', 'id_K', 'id_dimer']]
-    dirname = 'nswitches-{}_nswitchlocs-{}_a-{}_w-{}_singleBeta-{}_scaleType-{}_m-{}_plotInner-{}_targetID-{}_KID-{}_dimerID-{}'.format(*foo)
+    foo = [x[k] for k in ['m', 'id_target', 'id_K', 'id_dimer']]
+    dirname = 'm-{}_targetID-{}_KID-{}_dimerID-{}'.format(*foo)
 
-    goo = [x[k] for k in ['maxiter_O', 'popsize_O', 'polish_O', 'maxiter_K', 'popsize_K', 'polish_K', 'start']]
-    fname = 'maxiterO-{}_popsizeO-{}_polishO-{}_maxiterK-{}_popsizeK-{}_polishK-{}_start-{}'.format(*goo)
+    goo = [x[k] for k in ['maxiter_O', 'popsize_O', 'polish_O', 'maxiter_K', 'popsize_K', 'polish_K']]
+    fname = 'maxiterO-{}_popsizeO-{}_polishO-{}_maxiterK-{}_popsizeK-{}_polishK-{}'.format(*goo)
 
-    nm = os.path.join(dirname, fname)
+    nm = os.path.join(fname, dirname)
     return nm
 
 def run_main(sett, dothreading, make_plots):
@@ -89,6 +90,36 @@ def run_main(sett, dothreading, make_plots):
     if n_iters <= MAX_ITERS:
         opt_wrapper(sett_K, tune_dict=sett)
 
+    return sett
+
+def run_cleanup(info_file, experiment_key, master_output_file, danger_to_read):
+
+    while not os.path.exists(danger_to_read):
+        pause(10*np.random.rand())
+
+    with open(danger_to_read, 'wb') as srf:
+        f_master = open(master_output_file, 'ab')
+        try:
+            master = pickle.load(f_master)
+        except:
+            # only to initialize (first time)
+            master = {}
+
+        # read in run-specific model_info.pkl, then write it to master
+        f_run = open(info_file, 'rb')
+        #write the run to master
+        master[experiment_key] = pickle.load(f_run)
+
+        # write master to file
+        pickle.dump(master, f_master)
+
+        # delete run-specific
+        os.rmdir(info_file)
+
+    # delete safe to read file
+    os.rmdir(danger_to_read)
+
+    return
 
 if __name__ == "__main__":
     print('{} total experiments available'.format(len(EXPERIMENT_LIST)))
@@ -113,5 +144,15 @@ if __name__ == "__main__":
     else:
         settings = EXPERIMENT_LIST[FLAGS.id]
 
-        print('Running target id = ', settings['id_target'], 'with dimer id =', settings['id_dimer'])
-        run_main(settings, dothreading=FLAGS.dothreading, make_plots=FLAGS.make_plots)
+        for id_K in range(FLAGS.n_random_Ks):
+            settings['id_K'] = id_K
+            print('Running target id = ', settings['id_target'], 'with dimer id =', settings['id_dimer'])
+            sett = run_main(settings, dothreading=FLAGS.dothreading, make_plots=FLAGS.make_plots)
+
+            run_dir = sett['base_dir']
+            info_file = os.path.join(run_dir, 'model_info.pkl')
+            experiment_key = os.path.split(sett['base_dir'])[-1]
+            danger_to_read = os.path.join(*os.path.split(sett['base_dir'])[:-1], 'master_results_is_being_modified.info')
+            master_output_file = os.path.join(*os.path.split(sett['base_dir'])[:-1], 'master_results.csv')
+
+            run_cleanup(info_file, experiment_key, master_output_file, danger_to_read)
