@@ -97,7 +97,7 @@ def run_main(sett, dothreading, make_plots):
 
 def run_cleanup(info_file, experiment_key, master_output_file, danger_to_read):
 
-    while not os.path.exists(danger_to_read):
+    while os.path.exists(danger_to_read):
         time.sleep(10*np.random.rand())
 
     with open(danger_to_read, 'wb') as srf:
