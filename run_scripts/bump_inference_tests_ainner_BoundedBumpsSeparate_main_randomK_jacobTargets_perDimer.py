@@ -101,6 +101,7 @@ def run_cleanup(run_dir, info_file, experiment_key, master_output_file, danger_t
     while os.path.exists(danger_to_read):
         time.sleep(10*np.random.rand())
 
+    bp()
     with open(danger_to_read, 'wb') as srf:
         with open(master_output_file, 'ab') as f_master:
             try:
@@ -114,8 +115,8 @@ def run_cleanup(run_dir, info_file, experiment_key, master_output_file, danger_t
                 #write the run to master
                 master[experiment_key] = pickle.load(f_run)
 
-            # write master to file
-            pickle.dump(master, f_master)
+                # write master to file
+                pickle.dump(master, f_master)
 
         # delete run-specific
         # shutil.rmtree(run_dir)
