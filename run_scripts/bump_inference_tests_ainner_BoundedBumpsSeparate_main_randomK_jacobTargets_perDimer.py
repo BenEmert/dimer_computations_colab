@@ -102,17 +102,17 @@ def run_cleanup(run_dir, info_file, experiment_key, master_output_file, danger_t
         time.sleep(10*np.random.rand())
 
     with open(danger_to_read, 'wb') as srf:
-        f_master = open(master_output_file, 'ab')
-        try:
-            master = pickle.load(f_master)
-        except:
-            # only to initialize (first time)
-            master = {}
+        with open(master_output_file, 'ab') as f_master:
+            try:
+                master = pickle.load(f_master)
+            except:
+                # only to initialize (first time)
+                master = {}
 
         # read in run-specific model_info.pkl, then write it to master
-        f_run = open(info_file, 'rb')
-        #write the run to master
-        master[experiment_key] = pickle.load(f_run)
+        with open(info_file, 'rb') as f_run:
+            #write the run to master
+            master[experiment_key] = pickle.load(f_run)
 
         # write master to file
         pickle.dump(master, f_master)
