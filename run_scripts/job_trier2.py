@@ -8,6 +8,7 @@ import pandas as pd
 from pdb import set_trace as bp
 
 output_dir = "/groups/astuart/mlevine/dimer_computations_colab/results/BoundedBumps_randomK_jacobTarget_perDimer_9.0.0_devrun/maxiterO-2_popsizeO-2_polishO-0_maxiterK-1_popsizeK-1_polishK-0"
+os.makedirs(output_dir, exist_ok=True)
 log_file = os.path.join(output_dir, 'my.log')
 master_file = os.path.join(output_dir, 'master_file.pkl')
 
