@@ -263,10 +263,10 @@ def run_cleanup(master_file, output_dir):
 
     # look for completed runs, then consolidate their output and delete the original run data.
     for run_dir in os.listdir(output_dir):
-        info_file = os.path.join(run_dir, 'model_info.pkl')
+        info_file = os.path.join(output_dir, run_dir, 'model_info.pkl')
         experiment_key = os.path.split(run_dir)[-1]
         try:
-            with open(os.path.join(run_dir, 'model_info.pkl'), 'rb') as f:
+            with open(info_file, 'rb') as f:
                 # read experiment info
                 model_info = pickle.load(f)
 
