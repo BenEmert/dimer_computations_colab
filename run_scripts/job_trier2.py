@@ -295,7 +295,7 @@ except:
 
 while any(df.SUBMITTED==0):
 
-    run_cleanup(master_file, output_dir/maxiterO-2_popsizeO-2_polishO-0_maxiterK-1_popsizeK-1_polishK-0)
+    run_cleanup(master_file, output_dir)
     bp()
 
     one_job = df[df.SUBMITTED==0].iloc[0]
