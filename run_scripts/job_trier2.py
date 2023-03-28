@@ -1,6 +1,7 @@
 import os, sys
 import time
 import numpy as np
+import pickle
 import subprocess
 import pandas as pd
 from pdb import set_trace as bp
@@ -252,7 +253,7 @@ job_list = ['inference_HPC/randomK_jacobTargets_perDimer_autogen_devrun/m12_offs
 'inference_HPC/randomK_jacobTargets_perDimer_autogen_devrun/m3_offset0.job']
 
 def run_cleanup(master_file, output_dir):
-
+    bp()
     try:
         with open(master_file, 'rb') as f_master:
             master = pickle.load(f_master)
@@ -295,7 +296,7 @@ except:
 while any(df.SUBMITTED==0):
 
     run_cleanup(master_file, output_dir)
-
+    bp()
 
     one_job = df[df.SUBMITTED==0].iloc[0]
     cmd = ['sbatch', one_job['name']]
