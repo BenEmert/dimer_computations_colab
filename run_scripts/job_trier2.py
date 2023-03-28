@@ -7,7 +7,7 @@ import pandas as pd
 from pdb import set_trace as bp
 
 log_file = 'my.log'
-output_dir = "/groups/astuart/mlevine/dimer_computations_colab/results/BoundedBumps_randomK_jacobTarget_perDimer_9.0.0"
+output_dir = "/groups/astuart/mlevine/dimer_computations_colab/results/BoundedBumps_randomK_jacobTarget_perDimer_9.0.0/maxiterO-2_popsizeO-2_polishO-0_maxiterK-1_popsizeK-1_polishK-0"
 master_file = os.path.join(output_dir, 'master_file.pkl')
 
 sleep_secs = 30*60 # length of time (secs) to wait before trying to submit more jobs. Using 30min.
@@ -295,7 +295,7 @@ except:
 
 while any(df.SUBMITTED==0):
 
-    run_cleanup(master_file, output_dir)
+    run_cleanup(master_file, output_dir/maxiterO-2_popsizeO-2_polishO-0_maxiterK-1_popsizeK-1_polishK-0)
     bp()
 
     one_job = df[df.SUBMITTED==0].iloc[0]
