@@ -15,7 +15,7 @@ sbatch_str = """#!/bin/bash
 #SBATCH -J "randomK_jacobTargets_perID_m{m}_{offset}_DEV"   # job name
 #SBATCH --output=slurm/%x.%j.out
 #SBATCH --error=slurm/%x.%j.err
-#SBATCH --mem-per-cpu={mem}G
+#SBATCH --mem-per-cpu={mem}M
 
 base_dir="/groups/astuart/mlevine/dimer_computations_colab/results/BoundedBumps_randomK_jacobTarget_perDimer_9.0.0_devrun"
 
@@ -30,7 +30,7 @@ n_target_dict = {m: np.load('../data/voxel_averages/{}M_voxel_averages.npy'.form
 n_dimers_dict = {m: m*(m+1)/2 for m in range(3,13)}
 # mem_dict = {3: 5, 4: 10, 5: 20, 10: 20}
 m_list = [i for i in range(3,12+1)]
-mem_dict = {m: 1 for m in m_list} #always use 2GB RAM
+mem_dict = {m: 512 for m in m_list} #always use 2GB RAM
 for m in m_list:
     max_jobs = num_Ks * n_target_dict[m] * n_dimers_dict[m]
     for offset in np.arange(0, max_jobs, 1000):
