@@ -255,6 +255,8 @@ job_list = ['inference_HPC/randomK_jacobTargets_perDimer_autogen_devrun/m12_offs
 'inference_HPC/randomK_jacobTargets_perDimer_autogen_devrun/m3_offset0.job']
 
 def run_cleanup(master_file, output_dir):
+    print('Beginning Cleanup...')
+
     if not os.path.exists(output_dir):
         print(output_dir, 'NOT YET CREATED. SKIPPING RUN CLEANUP.')
         return
@@ -266,7 +268,10 @@ def run_cleanup(master_file, output_dir):
         # only to initialize (first time)
         master = {}
 
+    print('Starting with master of length', len(master))
+
     # look for completed runs, then consolidate their output and delete the original run data.
+    to_delete = []
     for run_dir in os.listdir(output_dir):
         info_file = os.path.join(output_dir, run_dir, 'model_info.pkl')
         experiment_key = os.path.split(run_dir)[-1]
@@ -278,14 +283,21 @@ def run_cleanup(master_file, output_dir):
                 #save experiment info to master dict
                 master[experiment_key] = model_info
 
-                # write master to file
-                with open(master_file, 'wb') as f_master:
-                    pickle.dump(master, f_master)
-
-                # delete original dir
-                shutil.rmtree(os.path.join(output_dir, run_dir))
+                # remember to delete this experiment
+                to_delete.append(os.path.join(output_dir, run_dir))
         except:
             pass
+
+    # write master to file
+    with open(master_file, 'wb') as f_master:
+        pickle.dump(master, f_master)
+
+    print('Finishing with master of length', len(master))
+
+    # delete all accounted for files
+    for del_dir in to_delete:
+        shutil.rmtree(del_dir)
+
     return
 
 try:
