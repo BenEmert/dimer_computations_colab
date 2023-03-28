@@ -254,6 +254,10 @@ job_list = ['inference_HPC/randomK_jacobTargets_perDimer_autogen_devrun/m12_offs
 'inference_HPC/randomK_jacobTargets_perDimer_autogen_devrun/m3_offset0.job']
 
 def run_cleanup(master_file, output_dir):
+    if not os.path.exists(output_dir):
+        print(output_dir, 'NOT YET CREATED. SKIPPING RUN CLEANUP.')
+        return
+        
     try:
         with open(master_file, 'rb') as f_master:
             master = pickle.load(f_master)
