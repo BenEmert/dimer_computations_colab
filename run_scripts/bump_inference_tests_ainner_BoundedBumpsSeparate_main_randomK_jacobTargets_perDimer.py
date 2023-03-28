@@ -163,4 +163,4 @@ if __name__ == "__main__":
             danger_to_read = os.path.join(*os.path.split(sett['base_dir'])[:-1], 'master_results_is_being_modified.info')
             master_output_file = os.path.join(*os.path.split(sett['base_dir'])[:-1], 'master_results.pkl')
 
-            run_cleanup(run_dir, info_file, experiment_key, master_output_file, danger_to_read)
+            # run_cleanup(run_dir, info_file, experiment_key, master_output_file, danger_to_read)
