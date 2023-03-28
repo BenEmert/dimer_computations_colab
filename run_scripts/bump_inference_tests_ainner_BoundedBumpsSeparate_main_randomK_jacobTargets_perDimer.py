@@ -98,6 +98,8 @@ def run_main(sett, dothreading, make_plots):
 
 def run_cleanup(run_dir, info_file, experiment_key, master_output_file, danger_to_read):
 
+    time.sleep(10*np.random.rand())
+
     while os.path.exists(danger_to_read):
         time.sleep(10*np.random.rand())
 
