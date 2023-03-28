@@ -3,7 +3,7 @@ import time
 import numpy as np
 import subprocess
 
-job_directory = 'inference_HPC/randomK_jacobTargets_perDimer_autogen'
+job_directory = 'inference_HPC/randomK_jacobTargets_perDimer_autogen_devrun'
 os.makedirs(job_directory, exist_ok=True)
 
 sbatch_str = """#!/bin/bash
