@@ -298,6 +298,7 @@ def run_cleanup(master_file, output_dir):
     for del_dir in to_delete:
         shutil.rmtree(del_dir)
 
+    print('Done Cleanup...')
     return
 
 try:
