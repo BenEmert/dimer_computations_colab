@@ -25,13 +25,12 @@ srun python bump_inference_tests_ainner_BoundedBumpsSeparate_main_randomK_jacobT
 
 # sleep_secs = 60*60 # length of time (secs) to wait before trying to submit more jobs. Using 1 hour.
 m_list = [3, 4, 5, 10]
-# m_list = range(3,13)
+# m_list = range(3,12+1)
 num_Ks = 1
 n_per_batch_submission = 1000
 n_target_dict = {m: np.load('../data/voxel_averages/{}M_voxel_averages.npy'.format(m)).shape[0] for m in range(3,13)}
-n_dimers_dict = {m: m*(m+1)/2 for m in range(3,13)}
+n_dimers_dict = {m: m*(m+1)/2 for m in m_list}
 # mem_dict = {3: 5, 4: 10, 5: 20, 10: 20}
-m_list = [i for i in range(3,12+1)]
 mem_dict = {m: 512 for m in m_list} #always use 2GB RAM
 for m in m_list:
     max_jobs = num_Ks * n_target_dict[m] * n_dimers_dict[m]
