@@ -11,7 +11,7 @@ log_file = 'my.log'
 output_dir = "/groups/astuart/mlevine/dimer_computations_colab/results/BoundedBumps_randomK_jacobTarget_perDimer_9.0.0/maxiterO-2_popsizeO-2_polishO-0_maxiterK-1_popsizeK-1_polishK-0"
 master_file = os.path.join(output_dir, 'master_file.pkl')
 
-sleep_secs = 30*60 # length of time (secs) to wait before trying to submit more jobs. Using 30min.
+sleep_secs = 3*60 # length of time (secs) to wait before trying to submit more jobs. Using 30min.
 
 job_list = ['inference_HPC/randomK_jacobTargets_perDimer_autogen_devrun/m12_offset53000.job',
 'inference_HPC/randomK_jacobTargets_perDimer_autogen_devrun/m12_offset52000.job',
@@ -254,7 +254,6 @@ job_list = ['inference_HPC/randomK_jacobTargets_perDimer_autogen_devrun/m12_offs
 'inference_HPC/randomK_jacobTargets_perDimer_autogen_devrun/m3_offset0.job']
 
 def run_cleanup(master_file, output_dir):
-    bp()
     try:
         with open(master_file, 'rb') as f_master:
             master = pickle.load(f_master)
@@ -295,7 +294,6 @@ except:
 while any(df.SUBMITTED==0):
 
     run_cleanup(master_file, output_dir)
-    bp()
 
     one_job = df[df.SUBMITTED==0].iloc[0]
     cmd = ['sbatch', one_job['name']]

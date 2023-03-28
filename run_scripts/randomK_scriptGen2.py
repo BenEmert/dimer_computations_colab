@@ -10,9 +10,9 @@ sbatch_str = """#!/bin/bash
 
 #Submit this script with: sbatch thefilename
 
-#SBATCH --time=24:00:00   # walltime
+#SBATCH --time=00:10:00   # walltime
 #SBATCH --array=0-1000      # how many tasks in the array
-#SBATCH -J "randomK_jacobTargets_perID_m{m}_{offset}"   # job name
+#SBATCH -J "randomK_jacobTargets_perID_m{m}_{offset}_DEV"   # job name
 #SBATCH --output=slurm/%x.%j.out
 #SBATCH --error=slurm/%x.%j.err
 #SBATCH --mem-per-cpu={mem}G
@@ -20,7 +20,7 @@ sbatch_str = """#!/bin/bash
 base_dir="/groups/astuart/mlevine/dimer_computations_colab/results/BoundedBumps_randomK_jacobTarget_perDimer_9.0.0"
 
 id=$(( {offset} + $SLURM_ARRAY_TASK_ID))
-srun python bump_inference_tests_ainner_BoundedBumpsSeparate_main_randomK_jacobTargets_perDimer.py --id $id --base_dir $base_dir --grid_dir badname --m {m}
+srun python bump_inference_tests_ainner_BoundedBumpsSeparate_main_randomK_jacobTargets_perDimer.py --id $id --base_dir $base_dir --grid_dir badname --m {m} --dev_run 1
 """
 
 # sleep_secs = 60*60 # length of time (secs) to wait before trying to submit more jobs. Using 1 hour.
@@ -30,7 +30,7 @@ n_target_dict = {m: np.load('../data/voxel_averages/{}M_voxel_averages.npy'.form
 n_dimers_dict = {m: m*(m+1)/2 for m in range(3,13)}
 # mem_dict = {3: 5, 4: 10, 5: 20, 10: 20}
 m_list = [i for i in range(3,12+1)]
-mem_dict = {m: 2 for m in m_list} #always use 2GB RAM
+mem_dict = {m: 1 for m in m_list} #always use 2GB RAM
 for m in m_list:
     max_jobs = num_Ks * n_target_dict[m] * n_dimers_dict[m]
     for offset in np.arange(0, max_jobs, 1000):
