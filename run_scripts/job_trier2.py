@@ -274,11 +274,11 @@ def run_cleanup(master_file, output_dir):
                 master[experiment_key] = model_info
 
                 # write master to file
-                with open(master_output_file, 'wb') as f_master:
+                with open(master_file, 'wb') as f_master:
                     pickle.dump(master, f_master)
 
                 # delete original dir
-                shutil.rmtree(run_dir)
+                # shutil.rmtree(run_dir)
 
         except:
             bp()
