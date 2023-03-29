@@ -117,6 +117,7 @@ def run_cleanup(master_file, output_dir):
     print('Done Cleanup...')
     return
 
+run_cleanup(master_file, output_dir)
 try:
     df = pd.read_csv(log_file)
 except:
