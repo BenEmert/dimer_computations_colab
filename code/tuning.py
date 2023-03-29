@@ -445,8 +445,9 @@ class TuneK:
                 extra_nm = ''
             else:
                 extra_nm = 'FinalK_{}'.format(ns)
-            print('\n## Now running/plotting final optimal values... ##')
-            self.loss_k(k_opt, final_run=True, plot_surface=plot_surface, nxsurface=self.nxsurface, extra_nm=extra_nm)
+            if not self.abort_early:
+                print('\n## Now running/plotting final optimal values... ##')
+                self.loss_k(k_opt, final_run=True, plot_surface=plot_surface, nxsurface=self.nxsurface, extra_nm=extra_nm)
             analyzeOpt = AnalyzePymoo([res], self.Knames, truth=self.truth['K'])
             percentile_list = [0,1] #[0, 1, 10, 50, 100]
             analyzeOpt.write_info(os.path.join(self.output_dir, extra_nm))
