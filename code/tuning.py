@@ -409,6 +409,17 @@ class TuneK:
         #     res_list += [res]
         # except:
         #     print('Unable to add brute force solution to result list.')
+
+            # make plots and check the solution
+            if nstarts==1:
+                extra_nm = ''
+            else:
+                extra_nm = 'FinalK_{}'.format(ns)
+
+            if self.abort_early:
+                self.loss_k(K0, final_run=True, plot_surface=plot_surface, nxsurface=self.nxsurface, extra_nm=extra_nm)
+                return
+
             res = minimize(
                 problem,
                 algorithm,
@@ -417,7 +428,6 @@ class TuneK:
                 save_history=True,
                 verbose=True)
             print('Optimization time:', res.exec_time, 'seconds')
-
             if polish:
                 result = scipy.optimize.minimize(problem.objs[0],
                                   res.X,
@@ -440,14 +450,8 @@ class TuneK:
             except:
                 pass
 
-            # make plots and check the solution
-            if nstarts==1:
-                extra_nm = ''
-            else:
-                extra_nm = 'FinalK_{}'.format(ns)
-            if not self.abort_early:
-                print('\n## Now running/plotting final optimal values... ##')
-                self.loss_k(k_opt, final_run=True, plot_surface=plot_surface, nxsurface=self.nxsurface, extra_nm=extra_nm)
+            print('\n## Now running/plotting final optimal values... ##')
+            self.loss_k(k_opt, final_run=True, plot_surface=plot_surface, nxsurface=self.nxsurface, extra_nm=extra_nm)
             analyzeOpt = AnalyzePymoo([res], self.Knames, truth=self.truth['K'])
             percentile_list = [0,1] #[0, 1, 10, 50, 100]
             analyzeOpt.write_info(os.path.join(self.output_dir, extra_nm))
