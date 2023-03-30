@@ -181,12 +181,16 @@ if __name__ == "__main__":
 
             print(df.sort_values(by="status"))
     else:
+        t0 = time.time()
         pool = Pool()
-        # results = pool.map(run_main, EXPERIMENT_LIST)
-        results = pool.map(run_wrapper, range(len(EXPERIMENT_LIST)+1), chunksize=1)
+        results = pool.map(run_main, EXPERIMENT_LIST)
+        # results = pool.map(run_wrapper, range(len(EXPERIMENT_LIST)), chunksize=1)
         # chunksize 1 ensures ordered job submission (I think!)
         pool.close()
         pool.join()
-        # output_dir = "/groups/astuart/mlevine/dimer_computations_colab/results/BoundedBumps_randomK_jacobTarget_perDimer_9.0.0_devrun/maxiterO-2_popsizeO-2_polishO-0_maxiterK-1_popsizeK-1_polishK-0"
-        # master_file = os.path.join(output_dir, 'master_file.pkl')
-        # run_cleanup(output_dir, master_file)
+        print('All jobs ran in a total of', (time.time() - t0)/60/60, 'hours' )
+
+        print('Run finished! Running cleanup now...')
+        output_dir = os.path.join(FLAGS.base_dir, 'maxiterO-2_popsizeO-2_polishO-0_maxiterK-1_popsizeK-1_polishK-0')
+        master_file = os.path.join(output_dir, 'master_file.pkl')
+        run_cleanup(output_dir, master_file)
