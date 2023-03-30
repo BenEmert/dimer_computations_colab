@@ -35,7 +35,7 @@ mydict = {
     "n_switches": [1],# 2],
     "n_switch_points": [3],
     "start": ["both"], #["on", "off", "both"],
-    "id_target": [i for i in range(np.load(FLAGS.target_lib_file).shape[0])],
+    "id_target": [i for i in range(np.load(FLAGS.target_lib_file.format(FLAGS.m)).shape[0])],
     "id_dimer": [i for i in range(int(FLAGS.m * (FLAGS.m + 1) / 2))],
     "m": [FLAGS.m],
     "acc_opt": ["inner"],
