@@ -1,3 +1,5 @@
+#!/bin/bash
+
 # 1. Download and Install Anaconda
 ##downloading (you can change your edition by visting anaconda.com)
 wget https://repo.anaconda.com/archive/Anaconda3-2023.03-Linux-x86_64.sh
@@ -29,8 +31,5 @@ pip install pymoo==0.5.0
 pip install --upgrade eqtk
 
 # Now run!!
-for m in 3 10;
-do
-  echo $m
-  nohup python bump_inference_tests_ainner_BoundedBumpsSeparate_main_randomK_jacobTargets_perDimer_multi.py --dev_run 1 --grid_dir badname --m $m --n_random_Ks 2 &
-done
+m=3
+nohup python bump_inference_tests_ainner_BoundedBumpsSeparate_main_randomK_jacobTargets_perDimer_multi.py --dev_run 1 --grid_dir badname --m $m --n_random_Ks 2 > log_${m}.out 2> log_${m}.err &
