@@ -29,7 +29,8 @@ pip install pymoo==0.5.0
 pip install --upgrade eqtk
 
 # Now run!!
-for m in 3 10
+for m in 3 10;
 do
+  echo $m
   nohup python bump_inference_tests_ainner_BoundedBumpsSeparate_main_randomK_jacobTargets_perDimer_multi.py --dev_run 1 --grid_dir badname --m $m --n_random_Ks 2 &
 done
