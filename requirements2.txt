@@ -84,7 +84,6 @@ pillow=9.3.0=py38hace64e9_1
 pluggy=1.0.0=py38h06a4308_1
 pycosat=0.6.4=py38h5eee18b_0
 pycparser=2.21=pyhd3eb1b0_0
-pymoo=0.5.0=pypi_0
 pyopenssl=22.0.0=pyhd3eb1b0_0
 pyparsing=3.0.9=py38h06a4308_0
 pyqt=5.9.2=py38h05f1152_4
