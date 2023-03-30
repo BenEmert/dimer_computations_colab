@@ -24,6 +24,8 @@ parser.add_argument("--m", default=3, type=int)
 parser.add_argument("--n_random_Ks", default=10, type=int)
 FLAGS = parser.parse_args()
 
+# n_target_dict = {m: np.load(FLAGS.target_lib_file).shape[0] for m in range(3,13)}
+
 mydict = {
     "grid_dir": [FLAGS.grid_dir],
     "nominal_base_dir": [FLAGS.base_dir],
@@ -33,7 +35,7 @@ mydict = {
     "n_switches": [1],# 2],
     "n_switch_points": [3],
     "start": ["both"], #["on", "off", "both"],
-    "id_target": [i for i in range(691)],
+    "id_target": [i for i in range(np.load(FLAGS.target_lib_file).shape[0])],
     "id_dimer": [i for i in range(int(FLAGS.m * (FLAGS.m + 1) / 2))],
     "m": [FLAGS.m],
     "acc_opt": ["inner"],
