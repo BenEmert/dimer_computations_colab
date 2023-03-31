@@ -634,63 +634,72 @@ class TuneK:
 
             f_hat_list = []
             mse_list = []
-            for n in range(N_subs):
-                fig, axs = plt.subplots(nrows=3, ncols=ncols, figsize = [ncols*7,21], squeeze=False)
-                plt.subplots_adjust(left=None, bottom=None, right=None, top=None, wspace=0.4, hspace=0.4)
-                for cc in range(ncols):
-                    j += 1
-                    if j >= self.n_targets:
-                        continue
+
+            if self.make_plots:
+                for n in range(N_subs):
+                    fig, axs = plt.subplots(nrows=3, ncols=ncols, figsize = [ncols*7,21], squeeze=False)
+                    plt.subplots_adjust(left=None, bottom=None, right=None, top=None, wspace=0.4, hspace=0.4)
+                    for cc in range(ncols):
+                        j += 1
+                        if j >= self.n_targets:
+                            continue
+                        c0_acc, theta = self.get_params(c0_acc_best, theta_best, j)
+                        axs[0,cc].plot(self.input_concentration, self.f_targets[j], label='Target', color='black')
+                        f_hat = self.predict(K, c0_acc, theta)
+                        f_hat_list.append(f_hat)
+                        axs[0,cc].plot(self.input_concentration, f_hat, '--', color=default_colors[0])
+                        axs[0,cc].set_xlabel('[Input Monomer]')
+                        mse_j = self.mse(f_hat, self.f_targets[j])
+                        mse_list += [mse_j]
+                        axs[0,cc].set_title('Fitting target-{}: MSE {}'.format(j, round(mse_j, 3)))
+                        axs[0,cc].set_xscale('log')
+                        axs[0,cc].legend()
+
+                        # compute dimers
+                        dimer_names = self.Knames[dimer_inds]
+                        output_dimers = self.g1(c0_acc, K)[:,dimer_inds]
+                        max_od = np.max(output_dimers, axis=0)
+
+                        if normalize_plot:
+                            axs[1,cc].plot(self.input_concentration, output_dimers/max_od, label=dimer_names)
+                            axs[1,cc].set_title('[Output Dimers (Max-Normalized)]')
+                            y = theta[dimer_inds]*max_od
+                        else:
+                            axs[1,cc].plot(self.input_concentration, output_dimers, label=dimer_names)
+                            axs[1,cc].set_title('[Output Dimers]')
+                            if self.log_errors:
+                                axs[1,cc].set_ylim([-3,3])
+                            else:
+                                axs[1,cc].set_yscale('log')
+                            y = theta[dimer_inds]
+
+                        axs[1,cc].set_xscale('log')
+                        axs[1,cc].set_xlabel('[Input Monomer]')
+                        axs[1,cc].legend()
+
+                        x = np.flipud(np.argsort(y))
+                        y_sorted = y[x]
+                        xseq = np.arange(len(x))
+                        axs[2,cc].bar(xseq, y_sorted, color=default_colors[x])
+                        axs[2,cc].set_xticks(xseq)
+                        axs[2,cc].set_xticklabels(dimer_names[x])
+                        if normalize_plot:
+                            axs[2,cc].set_title('Normalized Dimer Weights')
+                        else:
+                            axs[2,cc].set_title('Dimer Weights')
+                            axs[2,cc].set_yscale('log')
+
+                    fig.suptitle('Mean overall MSE = {}'.format(round(np.mean(mse_list),3)))
+                    if self.make_plots:
+                        fig.savefig(os.path.join(outdir, 'plot{}.pdf'.format(n)), format='pdf')
+                    plt.close()
+            else:
+                for j in range(self.n_targets):
                     c0_acc, theta = self.get_params(c0_acc_best, theta_best, j)
-                    axs[0,cc].plot(self.input_concentration, self.f_targets[j], label='Target', color='black')
                     f_hat = self.predict(K, c0_acc, theta)
                     f_hat_list.append(f_hat)
-                    axs[0,cc].plot(self.input_concentration, f_hat, '--', color=default_colors[0])
-                    axs[0,cc].set_xlabel('[Input Monomer]')
                     mse_j = self.mse(f_hat, self.f_targets[j])
                     mse_list += [mse_j]
-                    axs[0,cc].set_title('Fitting target-{}: MSE {}'.format(j, round(mse_j, 3)))
-                    axs[0,cc].set_xscale('log')
-                    axs[0,cc].legend()
-
-                    # compute dimers
-                    dimer_names = self.Knames[dimer_inds]
-                    output_dimers = self.g1(c0_acc, K)[:,dimer_inds]
-                    max_od = np.max(output_dimers, axis=0)
-
-                    if normalize_plot:
-                        axs[1,cc].plot(self.input_concentration, output_dimers/max_od, label=dimer_names)
-                        axs[1,cc].set_title('[Output Dimers (Max-Normalized)]')
-                        y = theta[dimer_inds]*max_od
-                    else:
-                        axs[1,cc].plot(self.input_concentration, output_dimers, label=dimer_names)
-                        axs[1,cc].set_title('[Output Dimers]')
-                        if self.log_errors:
-                            axs[1,cc].set_ylim([-3,3])
-                        else:
-                            axs[1,cc].set_yscale('log')
-                        y = theta[dimer_inds]
-
-                    axs[1,cc].set_xscale('log')
-                    axs[1,cc].set_xlabel('[Input Monomer]')
-                    axs[1,cc].legend()
-
-                    x = np.flipud(np.argsort(y))
-                    y_sorted = y[x]
-                    xseq = np.arange(len(x))
-                    axs[2,cc].bar(xseq, y_sorted, color=default_colors[x])
-                    axs[2,cc].set_xticks(xseq)
-                    axs[2,cc].set_xticklabels(dimer_names[x])
-                    if normalize_plot:
-                        axs[2,cc].set_title('Normalized Dimer Weights')
-                    else:
-                        axs[2,cc].set_title('Dimer Weights')
-                        axs[2,cc].set_yscale('log')
-
-                fig.suptitle('Mean overall MSE = {}'.format(round(np.mean(mse_list),3)))
-                if self.make_plots:
-                    fig.savefig(os.path.join(outdir, 'plot{}.pdf'.format(n)), format='pdf')
-                plt.close()
 
             # plot output dimers
             if self.make_plots:
