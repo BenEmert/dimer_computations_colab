@@ -97,7 +97,7 @@ def run_main(sett, dothreading=False, make_plots=False):
     if n_iters <= MAX_ITERS:
         opt_wrapper(sett_K, tune_dict=sett)
 
-    return sett
+    return
 
 def run_cleanup(output_dir, master_file):
     os.makedirs(output_dir, exist_ok=True)
@@ -185,12 +185,13 @@ if __name__ == "__main__":
     else:
         t0 = time.time()
         pool = Pool()
-        results = pool.map(run_main, EXPERIMENT_LIST)
+        # results = pool.map(run_main, EXPERIMENT_LIST)
+        pool.map(run_main, EXPERIMENT_LIST)
         # results = pool.map(run_wrapper, range(len(EXPERIMENT_LIST)), chunksize=1)
         # chunksize 1 ensures ordered job submission (I think!)
         pool.close()
         pool.join()
-        print('All jobs ran in a total of', (time.time() - t0)/60/60, 'hours' )
+        print('All jobs ran in a total of', (time.time() - t0)/60/60, 'hours')
 
         print('Run finished! Running cleanup now...')
         output_dir = os.path.join(FLAGS.base_dir, 'maxiterO-2_popsizeO-2_polishO-0_maxiterK-1_popsizeK-1_polishK-0')
