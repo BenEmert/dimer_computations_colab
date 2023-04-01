@@ -112,17 +112,11 @@ def run_cleanup(output_dir, master_file):
         print(output_dir, 'NOT YET CREATED. SKIPPING RUN CLEANUP.')
         return
 
-    try:
-        with open(master_file, 'rb') as f_master:
-            master = pickle.load(f_master)
-    except:
-        # only to initialize (first time)
-        master = {}
+    master = {}
 
     print('Starting with master of length', len(master))
 
     # look for completed runs, then consolidate their output and delete the original run data.
-    to_delete = []
     for run_dir in os.listdir(output_dir):
         info_file = os.path.join(output_dir, run_dir, 'model_info.pkl')
         experiment_key = os.path.split(run_dir)[-1]
@@ -133,9 +127,6 @@ def run_cleanup(output_dir, master_file):
 
                 #save experiment info to master dict
                 master[experiment_key] = model_info
-
-                # remember to delete this experiment
-                to_delete.append(os.path.join(output_dir, run_dir))
         except:
             pass
 
@@ -144,10 +135,6 @@ def run_cleanup(output_dir, master_file):
         pickle.dump(master, f_master)
 
     print('Finishing with master of length', len(master))
-
-    # delete all accounted for files
-    for del_dir in to_delete:
-        shutil.rmtree(del_dir)
 
     print('Done Cleanup...')
     return
@@ -186,7 +173,7 @@ def make_plots(master_file):
 
         new_dict[m][dID].append(Linf)
 
-    bp()
+    return new_dict
 
 if __name__ == "__main__":
     print('{} total experiments available'.format(len(EXPERIMENT_LIST)))
