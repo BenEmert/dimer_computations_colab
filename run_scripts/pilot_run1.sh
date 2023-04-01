@@ -1,6 +1,7 @@
 #!/bin/bash
 
-~/anaconda3/bin/conda activate dimer_opt2
+conda init bash
+conda activate dimer_opt2
 
 dev_run=1
 n_random_Ks=3
