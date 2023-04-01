@@ -154,6 +154,7 @@ def run_wrapper(id):
     return
 
 def make_plots(master_file):
+    bp()
     with open(master_file, 'rb') as f:
         x = pickle.load(f)
 
@@ -163,7 +164,7 @@ def make_plots(master_file):
 
         m = int(atts['m'])
         dID = int(atts['dimerID'])
-        Linf = value['Linf']
+        Linf = float(value['Linf'])
         if m not in new_dict:
             new_dict[m] = {dID: []}
         elif dID not in new_dict[m]:
@@ -171,6 +172,7 @@ def make_plots(master_file):
 
         new_dict[m][dID].append(Linf)
 
+    bp()
     return new_dict
 
 if __name__ == "__main__":
