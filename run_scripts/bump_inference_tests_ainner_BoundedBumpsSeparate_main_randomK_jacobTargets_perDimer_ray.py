@@ -201,3 +201,7 @@ if __name__ == "__main__":
         output_dir = os.path.join(FLAGS.base_dir, 'maxiterO-2_popsizeO-2_polishO-0_maxiterK-1_popsizeK-1_polishK-0')
         master_file = os.path.join(output_dir, 'master_file.pkl')
         run_cleanup(output_dir, master_file)
+
+        output_dir = os.path.join(FLAGS.base_dir, 'maxiterO-20_popsizeO-100_polishO-0_maxiterK-1_popsizeK-1_polishK-0')
+        master_file = os.path.join(output_dir, 'master_file.pkl')
+        run_cleanup(output_dir, master_file)
