@@ -750,13 +750,17 @@ class TuneK:
 
             # bp()
             # save results
+            f_fit = np.array(f_hat_list)
+            Linf = np.max( np.abs(f_fit - self.f_targets), axis=1 )
+
             out = {'MSE': mse_best,
                     'MSE-per-target': mse_list_best,
+                    'Linf': Linf,
                     'a': c0_acc_best,
                     'theta': theta_best,
                     'logK': K,
                     'K': np.float_power(10, K),
-                    'f_fit': np.array(f_hat_list),
+                    'f_fit': f_fit,
                     'f_target': self.f_targets}
 
             dump_data(out, os.path.join(output_dir, 'model_info.pkl'), to_dict=False)
