@@ -161,10 +161,8 @@ def make_plots(master_file):
     for key, value in x.items():
         atts = {g.split('-')[0]: g.split('-')[1] for g in key.split('_')}
 
-        new_key = (g.split('-')[0], g.split('-')[1])
-# m-5_targetID-154_KID-2_dimerID-3
-        m = atts['m']
-        dID = atts['dimerID']
+        m = int(atts['m'])
+        dID = int(atts['dimerID'])
         Linf = value['Linf']
         if m not in new_dict:
             new_dict[m] = {dID: []}
