@@ -166,6 +166,28 @@ def run_wrapper(id):
 
     return
 
+def make_plots(master_file):
+    with open(master_file, 'rb') as f:
+        x = pickle.load(f)
+
+    new_dict = {}
+    for key, value in x.items():
+        atts = {g.split('-')[0]: g.split('-')[1] for g in key.split('_')}
+
+        new_key = (g.split('-')[0], g.split('-')[1])
+# m-5_targetID-154_KID-2_dimerID-3
+        m = atts['m']
+        dID = atts['dimerID']
+        Linf = value['Linf']
+        if m not in new_dict:
+            new_dict[m] = {dID: []}
+        elif dID not in new_dict[m]:
+            new_dict[m][dID] = []
+
+        new_dict[m][dID].append(Linf)
+
+    bp()
+
 if __name__ == "__main__":
     print('{} total experiments available'.format(len(EXPERIMENT_LIST)))
     if FLAGS.run_all:
@@ -187,6 +209,20 @@ if __name__ == "__main__":
 
             print(df.sort_values(by="status"))
     else:
+        try:
+            output_dir = os.path.join(FLAGS.base_dir, 'maxiterO-2_popsizeO-2_polishO-0_maxiterK-1_popsizeK-1_polishK-0')
+            master_file = os.path.join(output_dir, 'master_file.pkl')
+            make_plots(master_file)
+        except:
+            pass
+
+        try:
+            output_dir = os.path.join(FLAGS.base_dir, 'maxiterO-20_popsizeO-100_polishO-0_maxiterK-1_popsizeK-1_polishK-0')
+            master_file = os.path.join(output_dir, 'master_file.pkl')
+            make_plots(master_file)
+        except:
+            pass
+
         t0 = time.time()
         pool = Pool()
         # results = pool.map(run_main, EXPERIMENT_LIST)
@@ -202,6 +238,16 @@ if __name__ == "__main__":
         master_file = os.path.join(output_dir, 'master_file.pkl')
         run_cleanup(output_dir, master_file)
 
+        try:
+            make_plots(master_file)
+        except:
+            pass
+
         output_dir = os.path.join(FLAGS.base_dir, 'maxiterO-20_popsizeO-100_polishO-0_maxiterK-1_popsizeK-1_polishK-0')
         master_file = os.path.join(output_dir, 'master_file.pkl')
         run_cleanup(output_dir, master_file)
+
+        try:
+            make_plots(master_file)
+        except:
+            pass
