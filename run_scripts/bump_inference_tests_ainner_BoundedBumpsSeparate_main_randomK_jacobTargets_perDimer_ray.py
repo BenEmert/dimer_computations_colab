@@ -154,7 +154,7 @@ def run_wrapper(id):
 
     return
 
-def make_plots(master_file):
+def plotter(master_file):
     with open(master_file, 'rb') as f:
         x = pickle.load(f)
 
@@ -222,28 +222,19 @@ if __name__ == "__main__":
 
             print(df.sort_values(by="status"))
     else:
-        # try:
         output_dir = os.path.join(FLAGS.base_dir, 'maxiterO-2_popsizeO-2_polishO-0_maxiterK-1_popsizeK-1_polishK-0')
         master_file = os.path.join(output_dir, 'master_file.pkl')
-        make_plots(master_file)
-        # except:
-        #     pass
+        if os.path.exists(master_file):
+            plotter(master_file)
 
-        try:
-            output_dir = os.path.join(FLAGS.base_dir, 'maxiterO-20_popsizeO-100_polishO-0_maxiterK-1_popsizeK-1_polishK-0')
-            master_file = os.path.join(output_dir, 'master_file.pkl')
-            make_plots(master_file)
-        except:
-            pass
+        output_dir = os.path.join(FLAGS.base_dir, 'maxiterO-20_popsizeO-100_polishO-0_maxiterK-1_popsizeK-1_polishK-0')
+        master_file = os.path.join(output_dir, 'master_file.pkl')
+        if os.path.exists(master_file):
+            plotter(master_file)
 
         t0 = time.time()
         pool = Pool()
-        # results = pool.map(run_main, EXPERIMENT_LIST)
         pool.map(run_main, EXPERIMENT_LIST)
-        # results = pool.map(run_wrapper, range(len(EXPERIMENT_LIST)), chunksize=1)
-        # chunksize 1 ensures ordered job submission (I think!)
-        # pool.close()
-        # pool.join()
         print('All jobs ran in a total of', (time.time() - t0)/60/60, 'hours')
 
         print('Run finished! Running cleanup now...')
@@ -252,7 +243,7 @@ if __name__ == "__main__":
         run_cleanup(output_dir, master_file)
 
         try:
-            make_plots(master_file)
+            plotter(master_file)
         except:
             pass
 
@@ -261,6 +252,6 @@ if __name__ == "__main__":
         run_cleanup(output_dir, master_file)
 
         try:
-            make_plots(master_file)
+            plotter(master_file)
         except:
             pass
