@@ -233,7 +233,7 @@ if __name__ == "__main__":
             plotter(master_file)
 
         t0 = time.time()
-        pool = Pool()
+        pool = Pool(os.cpu_count()-1) # use 1 fewer cores than available so that it is still easy to use bash on the machine.
         pool.map(run_main, EXPERIMENT_LIST)
         print('All jobs ran in a total of', (time.time() - t0)/60/60, 'hours')
 
