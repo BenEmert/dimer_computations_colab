@@ -158,18 +158,32 @@ def plot_targets2(output_dir, inputs, targets, fits, jacob_fits, m_list, n_plots
         fig.savefig(os.path.join(output_dir,'target_{}_plot{}.pdf'.format(nm,n)), format='pdf')
         plt.close()
 
-def plot_avg_err(output_dir, avg_err, jacob_avg_err, m_list, nm='mse', caption='Average MSE per target'):
+def plot_avg_err(output_dir, avg_err, jacob_avg_err, m_list, std=None, nm='mse', caption='Average MSE per target'):
     '''fits: (n_targets, n_inputs, n_runs, n_m_vals)'''
     os.makedirs(output_dir, exist_ok=True)
     fig, ax = plt.subplots(nrows=1, ncols=1, figsize = [10,10])
     ax.plot(m_list, avg_err, '-o', label='optimization')
     ax.plot(m_list, jacob_avg_err, '-o', label='grid')
+    if std is not None:
+        ax.errorbar(m_list, avg_err, yerr=std)
     ax.legend()
     ax.set_xlabel('Network size')
     ax.set_ylabel(caption)
     ax.set_title(caption)
     plt.subplots_adjust(left=None, bottom=None, right=None, top=None, wspace=0.4, hspace=0.4)
     fig.savefig(os.path.join(output_dir,'avg_{}.pdf'.format(nm)), format='pdf')
+    plt.close()
+
+def plot_avg_err2(output_fname, mean, std=None, nm='mse', caption='Average MSE per target'):
+    '''fits: (n_targets, n_inputs, n_runs, n_m_vals)'''
+    fig, ax = plt.subplots(nrows=1, ncols=1, figsize = [12,12])
+    ax.plot(mean, '-o')
+    if std is not None:
+        ax.errorbar(mean.index, mean, yerr=std)
+    ax.set_xlabel('Network size')
+    ax.set_title(caption)
+    plt.subplots_adjust(left=None, bottom=None, right=None, top=None, wspace=0.4, hspace=0.4)
+    fig.savefig(output_fname, format='pdf')
     plt.close()
 
 def plot_target_err(output_dir, opt_err, jacob_err, m_list, nm='mse', caption='MSE per target'):
