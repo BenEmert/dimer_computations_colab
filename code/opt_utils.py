@@ -29,6 +29,7 @@ def minimize_wrapper(problem, algorithm, termination, seed=None, save_history=Tr
                     polish=False,
                     report_times=False,
                     makenewdir=True,
+                    writedata=True,
                     truth = []):
 
     t0 = time()
@@ -62,7 +63,8 @@ def minimize_wrapper(problem, algorithm, termination, seed=None, save_history=Tr
     else:
         new_plot_dirname = plot_dirname
     ap = AnalyzePymoo(opt_list, truth=truth)
-    ap.write_info(new_plot_dirname)
+    if writedata:
+        ap.write_info(new_plot_dirname)
     if plot_analyses:
         ap.make_plots(new_plot_dirname)
     if report_times:

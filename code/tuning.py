@@ -1022,6 +1022,7 @@ class TuneK:
             verbose=verbose,
             truth=truth,
             seed=seed,
+            writedata=not(self.abort_early),
             plot_analyses=make_plots,
             makenewdir=make_new_dir,
             plot_dirname=plot_dirname)
