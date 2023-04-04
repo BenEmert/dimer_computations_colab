@@ -25,9 +25,16 @@ parser.add_argument("--dothreading", default=0, type=int)
 parser.add_argument("--make_plots", default=0, type=int)
 parser.add_argument("--m", default=3, type=int)
 parser.add_argument("--n_random_Ks", default=10, type=int)
+parser.add_argument("--frac_targets", default=1, type=float)
 FLAGS = parser.parse_args()
 
 # n_target_dict = {m: np.load(FLAGS.target_lib_file).shape[0] for m in range(3,13)}
+
+n_targets = np.load(FLAGS.target_lib_file.format(FLAGS.m)).shape[0]
+if FLAGS.frac_targets == 1:
+    id_target = [i for i in range(n_targets)]
+else:
+    id_target = np.random.choice(n_targets, size=int(n_targets*FLAGS.frac_targets), replace=False)
 
 mydict = {
     "grid_dir": [FLAGS.grid_dir],
@@ -38,7 +45,7 @@ mydict = {
     "n_switches": [1],# 2],
     "n_switch_points": [3],
     "start": ["both"], #["on", "off", "both"],
-    "id_target": [i for i in range(np.load(FLAGS.target_lib_file.format(FLAGS.m)).shape[0])],
+    "id_target": id_target,
     "id_dimer": [i for i in range(int(FLAGS.m * (FLAGS.m + 1) / 2))],
     "m": [FLAGS.m],
     "acc_opt": ["inner"],
