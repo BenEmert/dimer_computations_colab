@@ -211,7 +211,10 @@ def plotter(master_file):
     # plot_avg_err2(plot_fname, mean=df1.groupby(['m']).mean().goodenough, std=df1.groupby(['m']).std().goodenough, nm='Linf1', caption='Fraction of targets fit with Linf < 1.0')
     plot_boxes(plot_fname, df1, xname='m', yname='goodenough')
     plot_fname = os.path.join(base_dir, 'plot_bestDimer_convergence')
-    plot_K_convergence(plot_fname, df1, xname='kID', yname='goodenough', hue='m')
+    try:
+        plot_K_convergence(plot_fname, df1, xname='kID', yname='goodenough', hue='m')
+    except:
+        pass
 
     # for each m, what fraction of expressible targets can be achieved using a random K, a random output dimer, and a tuned a
     df2 = df.groupby(['m','KID', 'dimerID']).mean().reset_index()
@@ -219,7 +222,10 @@ def plotter(master_file):
     # plot_avg_err2(plot_fname, mean=df2.groupby(['m']).mean().goodenough, std=df2.groupby(['m']).std().goodenough, nm='Linf1', caption='Fraction of targets fit with Linf < 1.0')
     plot_boxes(plot_fname, df2, xname='m', yname='goodenough')
     plot_fname = os.path.join(base_dir, 'plot_eachDimerSeparate_convergence')
-    plot_K_convergence(plot_fname, df2, xname='kID', yname='goodenough', hue='m')
+    try:
+        plot_K_convergence(plot_fname, df2, xname='kID', yname='goodenough', hue='m')
+    except:
+        pass
 
 if __name__ == "__main__":
     print('{} total experiments available'.format(len(EXPERIMENT_LIST)))
