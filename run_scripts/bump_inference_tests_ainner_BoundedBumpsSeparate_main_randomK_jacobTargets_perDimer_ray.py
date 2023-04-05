@@ -11,7 +11,7 @@ import pandas as pd
 sys.path.append('../code')
 from utilities import dict_combiner
 from bump_inference_tests_ainner_ManyBumps import opt_wrapper
-from opt_utils import plot_avg_err2
+from opt_utils import plot_avg_err2, plot_boxes, plot_K_convergence
 from pdb import set_trace as bp
 
 parser = argparse.ArgumentParser()
@@ -162,51 +162,64 @@ def run_wrapper(id):
     return
 
 def plotter(master_file):
-    with open(master_file, 'rb') as f:
-        x = pickle.load(f)
 
-    keep_keys = ['m', 'targetID', 'KID', 'dimerID']
-    new_dict = {}
-    df = pd.DataFrame()
-    for key, value in x.items():
-        atts = {g.split('-')[0]: float(g.split('-')[1]) for g in key.split('_')}
-
-        foo = {k: atts[k] for k in keep_keys}
-        foo['Linf'] = float(value['Linf'])
-        df = pd.concat( [df, pd.DataFrame.from_dict([foo]) ])
-
-    df['goodenough'] = df.Linf <= 1
+    # read in CSVs if possible, else create them from master file
     base_dir = os.path.split(master_file)[0]
-    output_file = os.path.join(base_dir, 'summary.csv')
-    df.to_csv(output_file)
+    df_output_file = os.path.join(base_dir, 'summary.csv')
+    df_best_output_file = os.path.join(base_dir, 'summary_bestDimerID.csv')
+    try:
+        #read in summary CSVs
+        df = pd.read_csv(df_output_file)
+        df_best = pd.read_csv(df_best_output_file)
+    except:
+        # make CSV's from master file
+        with open(master_file, 'rb') as f:
+            x = pickle.load(f)
 
-    df_best = pd.DataFrame()
-    for m in df.m.unique():
-        m_df = df.loc[df.m==m]
-        for kID in m_df.KID.unique():
-            m_df_kID = m_df.loc[m_df.KID==kID]
-            # this is now a list of dimerIDs x target IDs
-            for targetID in m_df_kID.targetID.unique():
-                m_df_kID_targetID = m_df_kID.loc[m_df_kID.targetID==targetID]
-                # this is now a list of dimerIDs
-                Linf = m_df_kID_targetID.Linf.min()
-                foo = {'m': m, 'KID': kID, 'targetID': targetID, 'Linf': Linf}
-                df_best = pd.concat([df_best, pd.DataFrame.from_dict([foo])])
-    df_best['goodenough'] = df_best.Linf <= 1
-    output_file = os.path.join(base_dir, 'summary_bestDimerID.csv')
-    df_best.to_csv(output_file)
+        keep_keys = ['m', 'targetID', 'KID', 'dimerID']
+        new_dict = {}
+        df = pd.DataFrame()
+        for key, value in x.items():
+            atts = {g.split('-')[0]: float(g.split('-')[1]) for g in key.split('_')}
+
+            foo = {k: atts[k] for k in keep_keys}
+            foo['Linf'] = float(value['Linf'])
+            df = pd.concat( [df, pd.DataFrame.from_dict([foo]) ])
+
+        df['goodenough'] = df.Linf <= 1
+        df.to_csv(df_output_file)
+
+        df_best = pd.DataFrame()
+        for m in df.m.unique():
+            m_df = df.loc[df.m==m]
+            for kID in m_df.KID.unique():
+                m_df_kID = m_df.loc[m_df.KID==kID]
+                # this is now a list of dimerIDs x target IDs
+                for targetID in m_df_kID.targetID.unique():
+                    m_df_kID_targetID = m_df_kID.loc[m_df_kID.targetID==targetID]
+                    # this is now a list of dimerIDs
+                    Linf = m_df_kID_targetID.Linf.min()
+                    foo = {'m': m, 'KID': kID, 'targetID': targetID, 'Linf': Linf}
+                    df_best = pd.concat([df_best, pd.DataFrame.from_dict([foo])])
+        df_best['goodenough'] = df_best.Linf <= 1
+        df_best.to_csv(df_best_output_file)
 
     # make plots
     # for each m, what fraction of expressible targets can be achieved using a random K, a tuned a, and choice of output dimer?
-    df1 = df_best.groupby(['m','KID']).mean()
+    df1 = df_best.groupby(['m','KID']).mean().reset_index()
     plot_fname = os.path.join(base_dir, 'plot_bestDimer.pdf')
-    plot_avg_err2(plot_fname, mean=df1.groupby(['m']).mean().goodenough, std=df1.groupby(['m']).std().goodenough, nm='Linf1', caption='Fraction of targets fit with Linf < 1.0')
+    # plot_avg_err2(plot_fname, mean=df1.groupby(['m']).mean().goodenough, std=df1.groupby(['m']).std().goodenough, nm='Linf1', caption='Fraction of targets fit with Linf < 1.0')
+    plot_boxes(plot_fname, df1, xname='m', yname='goodenough')
+    plot_fname = os.path.join(base_dir, 'plot_bestDimer_convergence')
+    plot_K_convergence(plot_fname, df1, xname='kID', yname='goodenough', hue='m')
 
     # for each m, what fraction of expressible targets can be achieved using a random K, a random output dimer, and a tuned a
-    df2 = df.groupby(['m','KID', 'dimerID']).mean()
+    df2 = df.groupby(['m','KID', 'dimerID']).mean().reset_index()
     plot_fname = os.path.join(base_dir, 'plot_eachDimerSeparate.pdf')
-    plot_avg_err2(plot_fname, mean=df2.groupby(['m']).mean().goodenough, std=df2.groupby(['m']).std().goodenough, nm='Linf1', caption='Fraction of targets fit with Linf < 1.0')
-
+    # plot_avg_err2(plot_fname, mean=df2.groupby(['m']).mean().goodenough, std=df2.groupby(['m']).std().goodenough, nm='Linf1', caption='Fraction of targets fit with Linf < 1.0')
+    plot_boxes(plot_fname, df2, xname='m', yname='goodenough')
+    plot_fname = os.path.join(base_dir, 'plot_eachDimerSeparate_convergence')
+    plot_K_convergence(plot_fname, df2, xname='kID', yname='goodenough', hue='m')
 
 if __name__ == "__main__":
     print('{} total experiments available'.format(len(EXPERIMENT_LIST)))

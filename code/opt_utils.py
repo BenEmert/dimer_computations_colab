@@ -188,6 +188,29 @@ def plot_avg_err2(output_fname, mean, std=None, nm='mse', caption='Average MSE p
     fig.savefig(output_fname, format='pdf')
     plt.close()
 
+def plot_boxes(output_fname, df, xname, yname):
+    fig, ax = plt.subplots(nrows=1, ncols=1, figsize = [12,12])
+    sns.boxplot(ax=ax, x=xname, y=yname, data=df, showfliers = False, color='gray')
+    sns.stripplot(ax=ax, x=xname, y=yname, data=df, s=20, marker='D', color='r', alpha=0.8)
+    ax.set_xlabel('Network size')
+    plt.subplots_adjust(left=None, bottom=None, right=None, top=None, wspace=0.4, hspace=0.4)
+    fig.savefig(output_fname, format='pdf')
+    plt.close()
+
+def plot_K_convergence(output_fname, df, xname, yname, hue):
+    # make mean plot
+    fig, ax = plt.subplots(nrows=1, ncols=1, figsize = [12,12])
+    sns.lineplot(ax=ax, data=df.groupby(['m']).expanding().mean().reset_index(), x='level_1', y=yname, hue=hue)
+    fig.savefig(output_fname+'_mean.pdf', format='pdf')
+    plt.close()
+
+    # make std plot
+    fig, ax = plt.subplots(nrows=1, ncols=1, figsize = [12,12])
+    sns.lineplot(ax=ax, data=df.groupby(['m']).expanding().std().reset_index(), x='level_1', y=yname, hue=hue)
+    fig.savefig(output_fname+'_std.pdf', format='pdf')
+    plt.close()
+
+
 def plot_target_err(output_dir, opt_err, jacob_err, m_list, nm='mse', caption='MSE per target'):
     N_targets = jacob_err.shape[0]
     os.makedirs(output_dir, exist_ok=True)
