@@ -193,6 +193,7 @@ def plot_boxes(output_fname, df, xname, yname):
     sns.boxplot(ax=ax, x=xname, y=yname, data=df, showfliers = False, color='gray')
     sns.stripplot(ax=ax, x=xname, y=yname, data=df, s=20, marker='D', color='r', alpha=0.8)
     ax.set_xlabel('Network size')
+    ax.set_ylim([0, 1])
     plt.subplots_adjust(left=None, bottom=None, right=None, top=None, wspace=0.4, hspace=0.4)
     fig.savefig(output_fname, format='pdf')
     plt.close()
