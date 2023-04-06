@@ -31,7 +31,7 @@ FLAGS = parser.parse_args()
 # n_target_dict = {m: np.load(FLAGS.target_lib_file).shape[0] for m in range(3,13)}
 
 n_targets = np.load(FLAGS.target_lib_file.format(FLAGS.m)).shape[0]
-print('Total targets for m=',FLAGS.m)
+print('Total targets for m=', FLAGS.m, 'is', n_targets)
 if FLAGS.frac_targets == 1:
     id_target = [i for i in range(n_targets)]
 else:
