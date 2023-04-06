@@ -31,10 +31,12 @@ FLAGS = parser.parse_args()
 # n_target_dict = {m: np.load(FLAGS.target_lib_file).shape[0] for m in range(3,13)}
 
 n_targets = np.load(FLAGS.target_lib_file.format(FLAGS.m)).shape[0]
+print('Total targets for m=',FLAGS.m)
 if FLAGS.frac_targets == 1:
     id_target = [i for i in range(n_targets)]
 else:
     id_target = np.random.choice(n_targets, size=int(n_targets*FLAGS.frac_targets), replace=False)
+print('Number of selected targets:',len(id_target))
 
 mydict = {
     "grid_dir": [FLAGS.grid_dir],
