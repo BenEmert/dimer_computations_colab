@@ -257,6 +257,7 @@ def plotmaker(out_dir, dimer_of_interest):
         plt.savefig(str(pathlib.Path(out_dir,filename+'.pdf')),bbox_inches='tight',transparent=True)
         fig.patch.set_facecolor('white')
         plt.savefig(str(pathlib.Path(out_dir,filename+'.png')),dpi=900,bbox_inches='tight')
+        plt.close()
 
 def run_cleanup(output_dir, master_file):
     os.makedirs(output_dir, exist_ok=True)
