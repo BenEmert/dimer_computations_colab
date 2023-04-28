@@ -59,7 +59,7 @@ parser.add_argument("--n_random_Ks", default=1, type=int)
 parser.add_argument("--frac_targets", default=1, type=float)
 FLAGS = parser.parse_args()
 
-id_target = ['AND', 'NAND', 'OR', 'XOR', 'NOR', 'XNOR', 'ANOTB', 'A=B', 'A!=B',
+id_target = ['AND', 'NAND', 'OR', 'XOR', 'NOR', 'XNOR', 'ANOTB', 'AeqB', 'AneqB',
        'DoubleBandpass', 'ratio']
 
 mydict = {
