@@ -56,6 +56,7 @@ class TuneK:
                     n_switches = 2, # number of switches for bump library
                     n_switch_points = 5, # number of locations to place the switches
                     target_lib_file = None,
+                    target_lib_names_file = None,
                     acc_opt = 'inner',
                     w_opt = 'inner',
                     single_beta = False,
@@ -65,6 +66,8 @@ class TuneK:
                     m = 3,
                     n_input_samples = 30, #discretization of first monomer...time complexity scales linearly w.r.t. this parameter
                     n_accessory_samples = 75, # number of latin-hypercube samples from the space of initial accessory concentrations...time complexity scales linearly w.r.t. this parameter
+                    dim_input = 1, # dimension of input
+                    floor_dimers = True,
                     input_lb = -3,
                     input_ub = 3,
                     acc_lb = -3,
@@ -122,10 +125,13 @@ class TuneK:
         self.m = m
         self.n_input_samples = n_input_samples
         self.n_accessory_samples = n_accessory_samples
+        self.dim_input = dim_input
+        self.n_acc = m - dim_input
         self.input_lb = input_lb
         self.input_ub = input_ub
         self.acc_lb = acc_lb
         self.acc_ub = acc_ub
+        self.floor_dimers = floor_dimers # set small dimer concentrations to a limit...e.g. anything below 1e-3 gets set to 1e-3.
 
         self.abort_early = abort_early # use to run self.outer_opt fewer times for randomK experiments that don't need final plots.
         self.randomizeK = randomizeK
@@ -173,7 +179,7 @@ class TuneK:
         except:
             pass
 
-        self.f_targets = set_target_library(n_input_samples=n_input_samples, target_lib_name=target_lib_name, target_lib_file=target_lib_file, n_switches=n_switches, n_switch_points=n_switch_points, start=start)
+        self.f_targets = set_target_library(n_input_samples=n_input_samples, target_lib_name=target_lib_name, target_lib_file=target_lib_file, target_lib_names_file=target_lib_names_file, n_switches=n_switches, n_switch_points=n_switch_points, start=start)
         if id_target is not None:
             self.f_targets = self.f_targets[id_target].reshape(1,-1)
 
@@ -199,11 +205,11 @@ class TuneK:
         curve_path = os.path.join(grid_dir, '{}m_S_all.npy'.format(self.m))
 
         # I think the first m belong are monomers?
-        jacob = np.load(curve_path, allow_pickle=True) #.reshape(30,-1) # 30 x dimers x N
+        jacob = np.load(curve_path, allow_pickle=True) # 30 x dimers x N
 
         ### NOTE: the first entries belong to K, then the last few entries belong to accessory a.
         param_path = os.path.join(grid_dir, '{}m_K_A_param_sets.npy'.format(self.m))
-        params = np.load(param_path, allow_pickle=True) #.reshape(-1) #.reshape(30,-1) # 30 x dimers x N
+        params = np.load(param_path, allow_pickle=True) # 30 x dimers x N
         params = np.log10(params)
         param_ub = np.max(params, 0)
         param_lb = np.min(params, 0)
@@ -240,7 +246,7 @@ class TuneK:
         K_sorted[K_sorted < self.param_lb] = self.param_lb[0]
         K_sorted[K_sorted > self.param_ub] = self.param_ub[0]
 
-        c0_sorted = params_sorted[:,self.n_dimers:] #.reshape(1,-1)
+        c0_sorted = params_sorted[:,self.n_dimers:]
         c0_sorted[c0_sorted < self.acc_lb] = self.acc_lb
         c0_sorted[c0_sorted > self.acc_ub] = self.acc_ub
 
@@ -252,10 +258,9 @@ class TuneK:
         print('Re-check MSE:', self.simple_loss(self.g1(c0_sorted[0], K_sorted[0])))
 
         # re-order each param entry so that it obeys the descending constraint (for uniqueness)
-        n_input = 1
         for j in range(K_sorted.shape[0]):
-            K_sorted[j], new_inds = sort_K_ascending(K_sorted[j], self.m, n_input=n_input)
-            c0_inds = new_inds[self.acc_monomer_ind] - n_input
+            K_sorted[j], new_inds = sort_K_ascending(K_sorted[j], self.m, n_input=self.dim_input)
+            c0_inds = new_inds[self.acc_monomer_ind] - self.dim_input
             c0_sorted[j] = c0_sorted[j,c0_inds]
 
         # store optimal params
@@ -307,31 +312,31 @@ class TuneK:
 
     def setup(self):
 
-        self.Knames = np.array(make_Kij_names(n_input=1, n_accesory=self.m-1))
+        self.Knames = np.array(make_Kij_names(n_input=self.dim_input, n_accesory=self.n_acc))
         self.N = make_nXn_stoich_matrix(self.m)
         self.num_rxns = self.N.shape[0]
-        self.M0_min = [self.input_lb] + [0] * (self.m-1)
-        self.M0_max = [self.input_ub] + [0] * (self.m-1)
-        self.num_conc = [self.n_input_samples] + [1] * (self.m-1)
+        self.M0_min = [self.input_lb]*self.dim_input + [0] * (self.n_acc)
+        self.M0_max = [self.input_ub]*self.dim_input + [0] * (self.n_acc)
+        self.num_conc = [self.n_input_samples]*self.dim_input + [1] * (self.n_acc)
 
         self.n_dimers = len(self.Knames)
         self.C0 = make_C0_grid(self.m, M0_min=self.M0_min, M0_max=self.M0_max, num_conc=self.num_conc)
-        self.input_concentration = self.C0[:,0] # input monomer
+        self.input_concentration = self.C0[:,:self.dim_input] # input monomer
 
-        self.num_params = self.num_rxns + (self.m-1)
+        self.num_params = self.num_rxns + (self.n_acc)
 
-        self.acc_monomer_ind = np.arange(1,self.m)
+        self.acc_monomer_ind = np.arange(self.dim_input,self.m)
 
         #Parameter bounds for sampling and for titration
         if self.param_lb is None:
-            self.param_lb = [-6]*self.num_rxns + [-3]*(self.m-1)
+            self.param_lb = [-6]*self.num_rxns + [-3]*(self.n_acc)
 
         if self.param_ub is None:
-            self.param_ub = [6]*self.num_rxns + [3]*(self.m-1)
+            self.param_ub = [6]*self.num_rxns + [3]*(self.n_acc)
 
-        self.acc_lb_list = [self.acc_lb]*(self.m-1)
-        self.acc_ub_list = [self.acc_ub]*(self.m-1)
-        # self.acc_list = sample_concentrations(self.m-1, self.n_accessory_samples, self.acc_lb_list, self.acc_ub_list, do_power=False) # 75 (number of draws) x 2 (number of accessories)
+        self.acc_lb_list = [self.acc_lb]*(self.n_acc)
+        self.acc_ub_list = [self.acc_ub]*(self.n_acc)
+        # self.acc_list = sample_concentrations(self.n_acc, self.n_accessory_samples, self.acc_lb_list, self.acc_ub_list, do_power=False) # 75 (number of draws) x 2 (number of accessories)
 
         self.param_lb = [self.param_lb]*self.num_rxns
         self.param_ub = [self.param_ub]*self.num_rxns
@@ -347,7 +352,8 @@ class TuneK:
 
             constr_iq = []
             if do_constraints:
-                ind_list = get_diag_inds(n_input=1, n_accesory=self.m-1, m = self.m)[1:] # ignore first homodimer
+                ## TODO: NEED TO CHECK THIS and ignore all input homodimers (need to get their indices)
+                ind_list = get_diag_inds(n_input=self.dim_input, n_accesory=self.n_acc, m = self.m)[self.dim_input:] # ignore input homodimers
                 constr_iq = [functools.partial(self.diff, ilow=ind_list[j-1], ihigh=ind_list[j])
                                 for j in range(1,len(ind_list)) ]
 
@@ -380,7 +386,7 @@ class TuneK:
             if self.randomizeK:
                 np.random.seed(self.id_K)
                 K0 = np.random.uniform(low=self.param_lb, high=self.param_ub, size=(self.num_rxns))
-                K0 = sort_K_ascending(K0, self.m, n_input=1)[0]
+                K0 = sort_K_ascending(K0, self.m, n_input=self.dim_input)[0]
                 print('idK = ', self.id_K, 'yields K:', K0)
                 pop = Population.new("X", K0.reshape(1,-1)) #, "F", F)
                 algorithm = DE(pop_size=popsize, sampling=pop)
@@ -713,9 +719,9 @@ class TuneK:
                     plt.close()
 
                 # plot accessory values
-                a_dict = {'Learnt': np.array(c0_acc_best).reshape(-1, self.m-1)}
+                a_dict = {'Learnt': np.array(c0_acc_best).reshape(-1, self.n_acc)}
                 if len(self.truth['a0']):
-                    a_dict['True'] = np.array(self.truth['a0']).reshape(-1, self.m-1)
+                    a_dict['True'] = np.array(self.truth['a0']).reshape(-1, self.n_acc)
                 fig, axs = plt.subplots(nrows=1, ncols=len(a_dict), figsize = [len(a_dict)*12,10], squeeze=False)
                 plt.subplots_adjust(left=None, bottom=None, right=None, top=None, wspace=0.6, hspace=0.6)
                 c = -1
@@ -748,7 +754,6 @@ class TuneK:
                 fig.savefig(os.path.join(output_dir, 'logK.pdf'), format='pdf')
                 plt.close()
 
-            # bp()
             # save results
             f_fit = np.array(f_hat_list)
             Linf = np.max( np.abs(f_fit - self.f_targets), axis=1 )
@@ -857,8 +862,8 @@ class TuneK:
         elif self.acc_opt=='inner' and self.w_opt=='outer':
             # dimers_all = []
             # for j in range(self.n_targets):
-            #     i_low = j*(self.m-1)
-            #     i_high = i_low + (self.m-1)
+            #     i_low = j*(self.n_acc)
+            #     i_high = i_low + (self.n_acc)
             #     dimers_j = self.g1(c0_acc[i_low:i_high], K) # 40 x 9
             #     dimers_all += [dimers_j]
             targets_all = self.f_targets.reshape(-1) #(40*n,)
@@ -900,8 +905,8 @@ class TuneK:
 
             dimers_all = []
             for j in range(self.n_targets):
-                i_low = j*(self.m-1)
-                i_high = i_low + (self.m-1)
+                i_low = j*(self.n_acc)
+                i_high = i_low + (self.n_acc)
                 dimers_j = self.g1(c0_acc[i_low:i_high], K) # 40 x 9
                 dimers_all += [dimers_j]
             # targets_all = self.f_targets.reshape(-1) #(40*n,)
@@ -938,8 +943,8 @@ class TuneK:
         elif self.acc_opt=='inner' and self.w_opt=='outer':
             dimers_all = []
             for j in range(self.n_targets):
-                i_low = j*(self.m-1)
-                i_high = i_low + (self.m-1)
+                i_low = j*(self.n_acc)
+                i_high = i_low + (self.n_acc)
                 dimers_j = self.g1(c0_acc[i_low:i_high], K) # 40 x 9
                 dimers_all += [dimers_j]
             targets_all = self.f_targets.reshape(-1) #(40*n,)
@@ -988,8 +993,8 @@ class TuneK:
 
         elif self.acc_opt=='inner':
             f_obj = functools.partial(self.inner_opt, K=K, error_only=True)
-            xl = [self.acc_lb]*(self.m-1)*self.n_targets
-            xu = [self.acc_ub]*(self.m-1)*self.n_targets
+            xl = [self.acc_lb]*(self.n_acc)*self.n_targets
+            xu = [self.acc_ub]*(self.n_acc)*self.n_targets
             if self.w_opt=='inner' and self.one_scale and self.single_beta and not(self.no_rescaling):
                 xl += [self.scale_bounds[0]]*self.n_scales
                 xu += [self.scale_bounds[1]]*self.n_scales
@@ -1071,7 +1076,7 @@ class TuneK:
                 for n in range(n_opts):
                     mse_best = 0
                     mse_list_best = []
-                    c0_acc_best = np.zeros((self.n_targets, self.m-1))
+                    c0_acc_best = np.zeros((self.n_targets, self.n_acc))
                     theta_best = np.zeros((self.n_targets, self.n_dimers))
                     for j in range(self.n_targets):
                         opt = opt_list[j][n]
@@ -1135,7 +1140,7 @@ class TuneK:
                             n_max_gen=self.opt_settings_outer['maxiter'])
 
         if self.acc_opt=='inner' and self.w_opt=='outer':
-            self.n_var = self.n_targets * (self.m-1)
+            self.n_var = self.n_targets * (self.n_acc)
         elif self.acc_opt=='inner' and self.one_scale:
             if self.scale_type=="global":
                 n_scales = 1
@@ -1143,10 +1148,10 @@ class TuneK:
                 n_scales = self.n_dimers
             if self.no_rescaling:
                 n_scales = 0
-            self.n_var = self.n_targets * (self.m-1) + n_scales
+            self.n_var = self.n_targets * (self.n_acc) + n_scales
             self.n_scales = n_scales
         else:
-            self.n_var = self.m-1
+            self.n_var = self.n_acc
 
         popsize = self.opt_settings_outer['popsize']
         # self.algorithm = GA(pop_size=popsize)
@@ -1179,9 +1184,12 @@ class TuneK:
         dimers = sols[:,self.m:]
 
         # dimers = thresh2eps(dimers, eps=self.dimer_eps)
+        if self.floor_dimers:
+            dimers[dimers < 10**input_lb] = 10**input_lb
 
         if self.log_errors:
             dimers = np.log10(dimers)
+
 
         return dimers
 

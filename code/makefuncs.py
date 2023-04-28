@@ -8,7 +8,7 @@ import scipy.interpolate
 import numpy as np
 from pdb import set_trace as bp
 
-def set_target_library(n_input_samples=10, target_lib_name="SinCos", target_lib_file=None, bump_centers=[0.2, 0.4, 0.6], bump_width=2, n_switch_points=5, n_switches=2, start="both"):
+def set_target_library(n_input_samples=10, target_lib_name="SinCos", target_lib_file=None, target_lib_names_file=None, bump_centers=[0.2, 0.4, 0.6], bump_width=2, n_switch_points=5, n_switches=2, start="both"):
     '''Generate a library of functions to which we will fit or use to measure expressivity.'''
     if target_lib_name=='SinCos':
         x = np.linspace(0, 2*np.pi, n_input_samples)
@@ -29,6 +29,10 @@ def set_target_library(n_input_samples=10, target_lib_name="SinCos", target_lib_
         # to alleviate this, can make the bump_width wider.
         # in the future, should define bumps in real coordinates, THEN interpolate and determine discretizations afterwards.
         f_targets = bump_targets(bump_centers, bump_width, n_input_samples)
+    elif target_lib_name=='2d_jacob':
+        F = np.load(target_lib_file) # n_clusters x discretization
+        F_names = np.load(target_lib_names_file) # n_clusters x discretization
+        f_targets = {F_names[i]: F[i] for i in range(len(F_names))}
     else:
         raise('library name "{}" not recognized. Quitting.'.format(target_lib_name))
 
