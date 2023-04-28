@@ -60,7 +60,7 @@ parser.add_argument("--frac_targets", default=1, type=float)
 FLAGS = parser.parse_args()
 
 id_target = ['AND', 'NAND', 'OR', 'XOR', 'NOR', 'XNOR', 'ANOTB', 'A=B', 'A!=B',
-       'double_bandpass', 'ratio']
+       'DoubleBandpass', 'ratio']
 
 mydict = {
     "floor_dimers": [True],
