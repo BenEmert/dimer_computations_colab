@@ -113,7 +113,7 @@ def run_main(sett, dothreading=False, make_plots=False):
     print('Main run took', (time.time()-t0)/60, 'minutes')
     return
 
-def run_cleanup(output_dir, master_file):
+def run_cleanup(output_dir, master_file, apply_threshold=True, thresh=-3):
     os.makedirs(output_dir, exist_ok=True)
 
     print('Beginning Cleanup...')
@@ -134,6 +134,11 @@ def run_cleanup(output_dir, master_file):
             with open(info_file, 'rb') as f:
                 # read experiment info
                 model_info = pickle.load(f)
+
+                # modify Linf using thresholding
+                if apply_threshold:
+                    model_info['f_fit'][model_info['f_fit'] < thresh] = thresh
+                    model_info['Linf'] = np.max( np.abs(model_info['f_fit'] - model_info['f_target']) )
 
                 #save experiment info to master dict
                 master[experiment_key] = model_info
