@@ -352,20 +352,39 @@ if __name__ == "__main__":
 
             print(df.sort_values(by="status"))
     else:
-        # run_main(EXPERIMENT_LIST[FLAGS.id])
+        try:
+            output_dir = os.path.join(FLAGS.base_dir, 'maxiterO-2_popsizeO-2_polishO-0_maxiterK-1_popsizeK-1_polishK-0')
+            master_file = os.path.join(output_dir, 'master_file.pkl')
+            plotter(master_file)
+        except:
+            pass
+
+
+        output_dir = os.path.join(FLAGS.base_dir, 'maxiterO-20_popsizeO-100_polishO-0_maxiterK-1_popsizeK-1_polishK-0')
+        master_file = os.path.join(output_dir, 'master_file.pkl')
+        if os.path.exists(master_file):
+            plotter(master_file)
+
         t0 = time.time()
         pool = Pool(os.cpu_count()-1) # use 1 fewer cores than available so that it is still easy to use bash on the machine.
         pool.map(run_main, EXPERIMENT_LIST)
         print('All jobs ran in a total of', (time.time() - t0)/60/60, 'hours')
 
         print('Run finished! Running cleanup now...')
+        output_dir = os.path.join(FLAGS.base_dir, 'maxiterO-2_popsizeO-2_polishO-0_maxiterK-1_popsizeK-1_polishK-0')
+        master_file = os.path.join(output_dir, 'master_file.pkl')
+        run_cleanup(output_dir, master_file)
+
+        try:
+            plotter(master_file)
+        except:
+            pass
+
         output_dir = os.path.join(FLAGS.base_dir, 'maxiterO-20_popsizeO-100_polishO-0_maxiterK-1_popsizeK-1_polishK-0')
         master_file = os.path.join(output_dir, 'master_file.pkl')
         run_cleanup(output_dir, master_file)
 
         try:
             plotter(master_file)
-            print('Done plots!')
         except:
-            print('Plots failed')
             pass
