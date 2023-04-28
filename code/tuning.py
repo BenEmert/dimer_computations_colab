@@ -1185,7 +1185,7 @@ class TuneK:
 
         # dimers = thresh2eps(dimers, eps=self.dimer_eps)
         if self.floor_dimers:
-            dimers[dimers < 10**input_lb] = 10**input_lb
+            dimers[dimers < 10**self.input_lb] = 10**self.input_lb
 
         if self.log_errors:
             dimers = np.log10(dimers)
