@@ -88,6 +88,7 @@ class TuneK:
                     grid_dir=None,
                     randomizeK=False,
                     id_K=None,
+                    K_list_file='K_list.npy',
                     inner_opt_seed=99,
                     abort_early=False,
                     **kwargs):
@@ -136,6 +137,7 @@ class TuneK:
         self.abort_early = abort_early # use to run self.outer_opt fewer times for randomK experiments that don't need final plots.
         self.randomizeK = randomizeK
         self.id_K = id_K
+        self.K_list_file = K_list_file # list of K's to try (will use the one indexed by id_K...). only active if id_K is not None.
         self.inner_opt_seed = inner_opt_seed
 
         self.param_lb = param_lb
@@ -383,9 +385,13 @@ class TuneK:
                 n_last=20,
                 n_max_gen=maxiter)
 
-            if self.randomizeK:
+            if self.id_K is not None:
                 np.random.seed(self.id_K)
-                K0 = np.random.uniform(low=self.param_lb, high=self.param_ub, size=(self.num_rxns))
+                if self.randomizeK:
+                    K0 = np.random.uniform(low=self.param_lb, high=self.param_ub, size=(self.num_rxns))
+                else:
+                    K0 = np.load(self.K_list_file)[self.id_K]
+
                 K0 = sort_K_ascending(K0, self.m, n_input=self.dim_input)[0]
                 print('idK = ', self.id_K, 'yields K:', K0)
                 pop = Population.new("X", K0.reshape(1,-1)) #, "F", F)

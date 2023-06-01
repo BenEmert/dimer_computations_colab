@@ -18,13 +18,15 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--base_dir', default='../results/manybumps1switch_dev2', type=str) # base directory for output
 parser.add_argument('--grid_dir', default='../data/sims', type=str) # base directory for output
 parser.add_argument('--target_lib_file', default='../data/voxel_averages/{}M_voxel_averages.npy', type=str) # file for reading target functions
+parser.add_argument('--K_list_file', default='../data/K_sets/8M_connectivity.npy', type=str) # file for reading target functions
 parser.add_argument("--dev_run", default=0, type=int)
 parser.add_argument("--run_all", default=0, type=int)
 parser.add_argument("--id", default=0, type=int)
 parser.add_argument("--dothreading", default=0, type=int)
 parser.add_argument("--make_plots", default=0, type=int)
 parser.add_argument("--m", default=3, type=int)
-parser.add_argument("--n_random_Ks", default=10, type=int)
+parser.add_argument("--n_Ks", default=10, type=int)
+parser.add_argument("--randomizeK", default=1, type=int)
 parser.add_argument("--frac_targets", default=1, type=float)
 FLAGS = parser.parse_args()
 
@@ -38,10 +40,16 @@ else:
     id_target = np.random.choice(n_targets, size=int(n_targets*FLAGS.frac_targets), replace=False)
 print('Number of selected targets:',len(id_target))
 
+# if not doing random K's, then we are using the list of specific K's jacob defined.
+# Set the id_K's to do all of them.
+if not FLAGS.randomizeK:
+    FLAGS.n_Ks = np.load(FLAGS.K_list_file).shape[0]
+
 mydict = {
     "grid_dir": [FLAGS.grid_dir],
     "nominal_base_dir": [FLAGS.base_dir],
     "target_lib_file": [FLAGS.target_lib_file],
+    "K_list_file": [FLAGS.K_list_file],
     "target_lib_name": ["MetaClusters"], # this option reads in targets from file
     "dimer_eps": [1e-16],
     "n_switches": [1],# 2],
@@ -63,9 +71,9 @@ mydict = {
     "popsize_K": [1],
     "polish_K": [0],
     "nstarts_K": [1],
-    "randomizeK": [True],
+    "randomizeK": [FLAGS.randomizeK],
     "abort_early": [True],
-    "id_K": [i for i in range(FLAGS.n_random_Ks)],
+    "id_K": [i for i in range(FLAGS.n_Ks)],
     "inner_opt_seed": [None]
 }
 
