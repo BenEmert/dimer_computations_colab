@@ -390,7 +390,7 @@ class TuneK:
                 if self.randomizeK:
                     K0 = np.random.uniform(low=self.param_lb, high=self.param_ub, size=(self.num_rxns))
                 else:
-                    K0 = np.load(self.K_list_file)[self.id_K]
+                    K0 = np.log10(np.load(self.K_list_file)[self.id_K])
 
                 K0 = sort_K_ascending(K0, self.m, n_input=self.dim_input)[0]
                 print('idK = ', self.id_K, 'yields K:', K0)
